@@ -1,18 +1,17 @@
 <!DOCTYPE html>
-<html lang="en" class="dark">
+<html lang="id" class="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AeroSync | Premium Air Quality Monitoring</title>
-    
-    <!-- Tailwind CSS -->
+    <title>AirGuard Pro - Air Quality Monitoring Dashboard</title>
+    <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
-    
-    <!-- Font Awesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
-    <!-- Chart.js -->
+    <!-- Chart.js CDN -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Font Awesome icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 
     <script>
         tailwind.config = {
@@ -23,14 +22,14 @@
                         sans: ['Inter', 'sans-serif'],
                     },
                     colors: {
-                        aqi: {
-                            good: '#10B981',      // 0-50
-                            moderate: '#FBBF24',  // 51-100
-                            sensitive: '#F97316', // 101-150
-                            unhealthy: '#EF4444', // 151-200
-                            severe: '#8B5CF6',    // 201-300
-                            hazardous: '#9F1239'  // 301+
-                        }
+                        darkbg: '#090d16',
+                        cardbg: 'rgba(15, 23, 42, 0.75)',
+                        cardborder: 'rgba(255, 255, 255, 0.08)',
+                        aqigood: '#10b981',
+                        aqimod: '#f59e0b',
+                        aqiunhealthy: '#f97316',
+                        aqibad: '#ef4444',
+                        aqihazard: '#a855f7'
                     }
                 }
             }
@@ -38,880 +37,1444 @@
     </script>
 
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-
         body {
+            background-color: #090d16;
+            color: #f1f5f9;
             font-family: 'Inter', sans-serif;
-            background-color: #0f172a;
-            background-image: 
-                radial-gradient(at 0% 0%, hsla(253,16%,7%,1) 0, transparent 50%), 
-                radial-gradient(at 50% 0%, hsla(225,39%,30%,0.2) 0, transparent 50%), 
-                radial-gradient(at 100% 0%, hsla(339,49%,30%,0.2) 0, transparent 50%);
-            background-attachment: fixed;
-            color: #f8fafc;
+            overflow-x: hidden;
         }
 
-        /* Glassmorphism Utilities */
         .glass-panel {
-            background: rgba(30, 41, 59, 0.4);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
+            background: rgba(15, 23, 42, 0.7);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
             border: 1px solid rgba(255, 255, 255, 0.08);
-            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
         }
-        
-        .glass-input {
-            background: rgba(15, 23, 42, 0.6);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            color: white;
+
+        .glass-card {
+            background: rgba(30, 41, 59, 0.5);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
         }
-        .glass-input:focus {
-            outline: none;
-            border-color: rgba(56, 189, 248, 0.5);
-            box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.25);
-        }
+
+        .glow-good { box-shadow: 0 0 20px rgba(16, 185, 129, 0.2); }
+        .glow-mod { box-shadow: 0 0 20px rgba(245, 158, 11, 0.2); }
+        .glow-bad { box-shadow: 0 0 20px rgba(239, 68, 68, 0.25); }
 
         /* Custom Scrollbar */
-        ::-webkit-scrollbar { width: 8px; }
-        ::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); }
-        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.4); }
-
-        /* Globe Animation */
-        .globe-container {
-            width: 120px;
-            height: 120px;
-            border-radius: 50%;
-            position: relative;
-            overflow: hidden;
-            box-shadow: inset -10px -10px 20px rgba(0,0,0,0.8), 0 0 20px rgba(56, 189, 248, 0.4);
-            background: #1e3a8a;
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
         }
-        .globe-map {
-            width: 200%;
-            height: 100%;
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='100' viewBox='0 0 200 100'%3E%3Cpath fill='%2310b981' opacity='0.7' d='M20,20 Q40,10 60,30 T100,40 T140,20 T180,50 L180,90 L20,90 Z'/%3E%3Cpath fill='%23059669' opacity='0.5' d='M10,40 Q30,60 50,30 T90,70 T130,50 T170,80 L170,100 L10,100 Z'/%3E%3C/svg%3E");
-            background-size: cover;
-            animation: spin-globe 10s linear infinite;
+        ::-webkit-scrollbar-track {
+            background: #0f172a;
         }
-        @keyframes spin-globe {
-            100% { transform: translateX(-50%); }
+        ::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #475569;
         }
 
-        /* Diorama */
-        .diorama-box {
-            position: relative;
-            overflow: hidden;
-            border-radius: 1rem;
-            height: 200px;
-            transition: background 1s ease;
+        /* Landscape Fog Animation */
+        @keyframes floatSmog {
+            0% { transform: translateX(-5%) translateY(0); opacity: 0.4; }
+            50% { transform: translateX(5%) translateY(-3px); opacity: 0.7; }
+            100% { transform: translateX(-5%) translateY(0); opacity: 0.4; }
         }
-        .diorama-layer {
-            position: absolute;
-            bottom: 0;
-            width: 100%;
-            background-size: contain;
-            background-repeat: repeat-x;
-            background-position: bottom;
-            transition: all 0.5s ease;
+
+        .smog-layer {
+            animation: floatSmog 8s ease-in-out infinite;
         }
-        .diorama-smog {
-            position: absolute;
-            inset: 0;
-            transition: all 1s ease;
-            mix-blend-mode: multiply;
+
+        /* Pulse Cigarette Animation */
+        @keyframes smokeRise {
+            0% { transform: translateY(0) scaleX(1); opacity: 0.8; }
+            100% { transform: translateY(-15px) scaleX(1.8); opacity: 0; }
         }
-        .diorama-sun {
-            position: absolute;
-            top: 20px;
-            right: 40px;
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            background: #FDE047;
-            box-shadow: 0 0 20px #FDE047;
-            transition: all 1s ease;
+        .smoke-particle {
+            animation: smokeRise 2s infinite ease-out;
+        }
+
+        /* Globe Rotation Animation */
+        @keyframes spinGlobe {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        .globe-spin {
+            animation: spinGlobe 40s linear infinite;
+        }
+        .globe-spin:hover {
+            animation-play-state: paused;
         }
     </style>
 </head>
-<body class="antialiased min-h-screen pb-12">
+<body class="min-h-screen pb-12">
 
-    <!-- Navbar -->
-    <nav class="glass-panel sticky top-0 z-50 px-6 py-4 mb-8">
-        <div class="max-w-7xl mx-auto flex justify-between items-center">
-            <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-400 to-blue-600 flex items-center justify-center shadow-lg">
-                    <i class="fa-solid fa-wind text-white text-xl"></i>
+    <!-- Toast Notification Container -->
+    <div id="toast-container" class="fixed top-20 right-5 z-50 flex flex-col gap-3 max-w-sm w-full pointer-events-none"></div>
+
+    <!-- Header & Navigation -->
+    <header class="sticky top-0 z-40 glass-panel border-b border-slate-800 px-4 lg:px-8 py-3.5 mb-6">
+        <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-4">
+            
+            <!-- Logo & Title -->
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-cyan-500 to-blue-600 flex items-center justify-center text-white shadow-lg shadow-cyan-500/30">
+                    <i class="fa-solid font-bold fa-wind text-xl"></i>
                 </div>
-                <h1 class="text-2xl font-bold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-400">AeroSync</h1>
-            </div>
-            <div class="flex items-center gap-4 text-sm font-medium">
-                <span class="hidden md:inline text-gray-400" id="live-time"></span>
-                <div class="flex bg-gray-900/50 rounded-lg p-1 border border-white/5">
-                    <button id="btn-who" class="px-3 py-1 rounded-md bg-blue-500/20 text-blue-400 transition-colors">WHO Standard</button>
-                    <button id="btn-epa" class="px-3 py-1 rounded-md text-gray-400 hover:text-gray-200 transition-colors">US EPA</button>
+                <div>
+                    <h1 class="text-xl font-extrabold tracking-tight bg-gradient-to-r from-white via-slate-200 to-slate-400 bg-clip-text text-transparent">
+                        AirGuard <span class="text-cyan-400 text-xs px-2 py-0.5 rounded-full border border-cyan-500/30 bg-cyan-950/40">PRO</span>
+                    </h1>
+                    <p class="text-xs text-slate-400 flex items-center gap-1.5">
+                        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                        Live AQI Intelligence
+                    </p>
                 </div>
             </div>
+
+            <!-- Standard Switcher & Time Badge -->
+            <div class="flex flex-wrap items-center gap-3">
+                <!-- Standard Toggle -->
+                <div class="bg-slate-900/80 p-1 rounded-xl border border-slate-800 flex items-center">
+                    <button id="std-epa" onclick="setStandard('EPA')" class="px-3 py-1.5 text-xs font-semibold rounded-lg transition-all duration-200 bg-cyan-600 text-white shadow-md">
+                        US-EPA
+                    </button>
+                    <button id="std-who" onclick="setStandard('WHO')" class="px-3 py-1.5 text-xs font-semibold rounded-lg transition-all duration-200 text-slate-400 hover:text-white">
+                        WHO Strict
+                    </button>
+                </div>
+
+                <!-- Current Time -->
+                <div class="hidden sm:flex items-center gap-2 bg-slate-900/60 border border-slate-800/80 text-slate-300 text-xs px-3 py-2 rounded-xl">
+                    <i class="fa-regular fa-clock text-cyan-400"></i>
+                    <span id="live-clock">12:00:00 WIB</span>
+                </div>
+
+                <!-- Quick Status Badge -->
+                <div id="quick-badge" class="px-3.5 py-1.5 rounded-xl text-xs font-bold border bg-amber-500/10 border-amber-500/30 text-amber-400 flex items-center gap-2">
+                    <span class="w-2 h-2 rounded-full bg-amber-400 animate-ping"></span>
+                    <span id="quick-badge-text">Sedang (AQI 78)</span>
+                </div>
+            </div>
+
         </div>
-    </nav>
+    </header>
 
-    <!-- Main Dashboard -->
-    <main class="max-w-7xl mx-auto px-4 sm:px-6 space-y-6">
-        
-        <!-- Top Section: Location, Main AQI, Diorama -->
+    <!-- Main Container -->
+    <main class="max-w-7xl mx-auto px-4 lg:px-8 space-y-6">
+
+        <!-- GRID SECTION 1: Region Selector + Interactive Globe & Dynamic Landscape -->
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
             
-            <!-- Left Col: Location & Globe (Col span 4) -->
-            <div class="glass-panel rounded-2xl p-6 lg:col-span-4 flex flex-col justify-between relative overflow-hidden group">
-                <div class="absolute top-0 right-0 p-32 bg-cyan-500/10 rounded-full blur-3xl -z-10 group-hover:bg-cyan-500/20 transition-all duration-500"></div>
-                
-                <div>
-                    <h2 class="text-lg font-semibold mb-4 text-gray-200 flex items-center gap-2">
-                        <i class="fa-solid fa-location-dot text-cyan-400"></i> Region Selector
+            <!-- Feature 1: Region Cascade & Interactive Globe (4 Cols) -->
+            <div class="lg:col-span-5 glass-panel rounded-2xl p-5 flex flex-col justify-between relative overflow-hidden">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-sm font-bold uppercase tracking-wider text-slate-400 flex items-center gap-2">
+                        <i class="fa-solid fa-earth-asia text-cyan-400"></i> Wilayah & Globe
                     </h2>
-                    
-                    <div class="space-y-3">
-                        <select id="sel-country" class="glass-input w-full p-2.5 rounded-lg text-sm">
-                            <option value="ID">Indonesia</option>
+                    <span class="text-xs bg-slate-800 text-slate-300 px-2 py-1 rounded-md border border-slate-700">GPS Sync</span>
+                </div>
+
+                <!-- Cascade Selectors -->
+                <div class="space-y-3 z-10 relative mb-4">
+                    <div>
+                        <label class="block text-xs text-slate-400 mb-1 font-medium">Negara</label>
+                        <select id="select-country" onchange="onCountryChange()" class="w-full bg-slate-900/90 border border-slate-700/80 rounded-xl px-3.5 py-2 text-sm text-slate-200 focus:outline-none focus:border-cyan-500 transition-colors">
+                            <option value="Indonesia">Indonesia 🇮🇩</option>
+                            <option value="Malaysia">Malaysia 🇲🇾</option>
+                            <option value="Singapura">Singapura 🇸🇬</option>
+                            <option value="Jepang">Jepang 🇯🇵</option>
                         </select>
-                        <select id="sel-province" class="glass-input w-full p-2.5 rounded-lg text-sm">
-                            <option value="JI">Jawa Timur</option>
-                        </select>
-                        <select id="sel-city" class="glass-input w-full p-2.5 rounded-lg text-sm transition-all duration-300">
-                            <option value="Malang" data-aqi="125">Malang</option>
-                            <option value="Surabaya" data-aqi="155">Surabaya</option>
-                            <option value="Batu" data-aqi="45">Batu</option>
-                            <option value="Jakarta" data-aqi="210">Jakarta</option>
-                        </select>
                     </div>
-                </div>
 
-                <div class="mt-8 flex justify-center items-center gap-6">
-                    <div class="globe-container">
-                        <div class="globe-map"></div>
-                    </div>
-                    <div class="text-center">
-                        <p class="text-xs text-gray-400 mb-1">Global Station</p>
-                        <div class="text-2xl font-bold text-cyan-400">Active</div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Middle Col: Current Status (Col span 4) -->
-            <div class="glass-panel rounded-2xl p-6 lg:col-span-4 flex flex-col items-center justify-center text-center relative">
-                <p class="text-sm font-medium text-gray-400 uppercase tracking-wider mb-2">Current AQI Index</p>
-                
-                <div class="relative w-48 h-48 flex items-center justify-center">
-                    <svg class="w-full h-full transform -rotate-90 absolute inset-0">
-                        <circle cx="96" cy="96" r="88" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="12"></circle>
-                        <circle id="aqi-ring" cx="96" cy="96" r="88" fill="none" stroke="#F97316" stroke-width="12" stroke-dasharray="552.92" stroke-dashoffset="100" class="transition-all duration-1000 ease-out"></circle>
-                    </svg>
-                    <div class="flex flex-col items-center z-10">
-                        <span id="aqi-value" class="text-6xl font-black tabular-nums tracking-tighter">125</span>
-                        <span id="aqi-label" class="text-sm font-semibold mt-1 px-3 py-1 rounded-full bg-orange-500/20 text-orange-400 border border-orange-500/30">Unhealthy (Sens)</span>
-                    </div>
-                </div>
-
-                <div class="mt-6 grid grid-cols-2 gap-4 w-full">
-                    <div class="bg-gray-900/50 rounded-xl p-3 border border-white/5">
-                        <p class="text-xs text-gray-500 mb-1">Primary Pollutant</p>
-                        <p class="font-semibold text-gray-200">PM2.5</p>
-                    </div>
-                    <div class="bg-gray-900/50 rounded-xl p-3 border border-white/5">
-                        <p class="text-xs text-gray-500 mb-1">Concentration</p>
-                        <p class="font-semibold text-gray-200" id="pm25-val">45.5 µg/m³</p>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Right Col: Diorama & Equivalency (Col span 4) -->
-            <div class="glass-panel rounded-2xl p-6 lg:col-span-4 flex flex-col gap-4">
-                
-                <div class="flex justify-between items-center mb-1">
-                    <h2 class="text-sm font-semibold text-gray-300">Environment View</h2>
-                    <div class="flex bg-gray-900/50 rounded-lg p-1 border border-white/5 text-xs">
-                        <button class="diorama-btn active px-2 py-1 rounded text-white bg-white/10" data-type="urban">Urban</button>
-                        <button class="diorama-btn px-2 py-1 rounded text-gray-400 hover:text-white" data-type="rural">Rural</button>
-                        <button class="diorama-btn px-2 py-1 rounded text-gray-400 hover:text-white" data-type="mountain">Mountain</button>
-                    </div>
-                </div>
-                
-                <!-- Diorama Box -->
-                <div id="diorama" class="diorama-box flex-1 shadow-inner border border-white/10" style="background: linear-gradient(to bottom, #4facfe, #00f2fe);">
-                    <div id="diorama-sun" class="diorama-sun"></div>
-                    <div id="diorama-layer" class="diorama-layer h-1/2 opacity-70" style="background-image: url('data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22 preserveAspectRatio=%22none%22%3E%3Cpath d=%22M0,100 L0,50 L10,50 L10,30 L20,30 L20,60 L30,60 L30,40 L40,40 L40,70 L50,70 L50,20 L60,20 L60,60 L70,60 L70,40 L80,40 L80,80 L90,80 L90,50 L100,50 L100,100 Z%22 fill=%22%231e293b%22/%3E%3C/svg%3E');"></div>
-                    <div id="diorama-smog" class="diorama-smog bg-gray-500/0"></div>
-                </div>
-
-                <!-- Cigarette Equivalence -->
-                <div class="bg-gradient-to-r from-red-900/40 to-gray-900/40 rounded-xl p-3 border border-red-500/20 flex items-center justify-between">
-                    <div class="flex items-center gap-3">
-                        <i class="fa-solid fa-smoking text-red-400 text-xl"></i>
+                    <div class="grid grid-cols-2 gap-3">
                         <div>
-                            <p class="text-xs text-gray-400">Passive Smoking Eq.</p>
-                            <p class="text-sm font-semibold"><span id="cig-count" class="text-red-400">2</span> Cigarettes / day</p>
+                            <label class="block text-xs text-slate-400 mb-1 font-medium">Provinsi</label>
+                            <select id="select-province" onchange="onProvinceChange()" class="w-full bg-slate-900/90 border border-slate-700/80 rounded-xl px-3.5 py-2 text-sm text-slate-200 focus:outline-none focus:border-cyan-500 transition-colors">
+                                <!-- Populated dynamically -->
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs text-slate-400 mb-1 font-medium">Kota / Kab</label>
+                            <select id="select-city" onchange="onCityChange()" class="w-full bg-slate-900/90 border border-slate-700/80 rounded-xl px-3.5 py-2 text-sm text-slate-200 focus:outline-none focus:border-cyan-500 transition-colors">
+                                <!-- Populated dynamically -->
+                            </select>
                         </div>
                     </div>
-                    <i class="fa-solid fa-circle-info text-gray-500 cursor-pointer hover:text-gray-300" title="Based on Berkeley Earth study: 1 cig ≈ 22 µg/m3 PM2.5"></i>
+                </div>
+
+                <!-- CSS 3D Globe Visualizer -->
+                <div class="relative w-full h-44 my-2 flex items-center justify-center overflow-hidden rounded-xl border border-slate-800/80 bg-slate-950/60">
+                    <div class="absolute inset-0 bg-radial-gradient opacity-30"></div>
+                    <!-- Rotating Globe Circle -->
+                    <div class="w-36 h-36 rounded-full border-2 border-dashed border-cyan-500/40 relative flex items-center justify-center globe-spin">
+                        <svg class="w-28 h-28 opacity-80 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <circle cx="12" cy="12" r="10" stroke-width="1.2" stroke-dasharray="2 2" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.2" d="M2 12h20M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/>
+                        </svg>
+                        <!-- Node Pin Dots -->
+                        <div class="absolute w-2.5 h-2.5 bg-emerald-400 rounded-full top-4 right-8 animate-ping"></div>
+                        <div class="absolute w-2 h-2 bg-amber-400 rounded-full bottom-6 left-6"></div>
+                        <div class="absolute w-2 h-2 bg-cyan-400 rounded-full top-10 left-4"></div>
+                    </div>
+                    
+                    <!-- Center Active Location Overlay -->
+                    <div class="absolute bottom-2 left-3 right-3 bg-slate-900/90 border border-slate-800 rounded-lg p-2 flex items-center justify-between text-xs backdrop-blur-md">
+                        <div class="flex items-center gap-2">
+                            <i class="fa-solid fa-location-dot text-red-400 animate-bounce"></i>
+                            <span id="globe-location-label" class="font-bold text-slate-200">Malang, Jatim</span>
+                        </div>
+                        <span id="globe-coords" class="font-mono text-[10px] text-slate-400">7.9666° S, 112.6326° E</span>
+                    </div>
                 </div>
             </div>
+
+            <!-- Feature 2: Dynamic Diorama Landscape Visualizer (7 Cols) -->
+            <div class="lg:col-span-7 glass-panel rounded-2xl p-5 flex flex-col justify-between relative overflow-hidden">
+                <div class="flex flex-wrap justify-between items-center gap-2 mb-3">
+                    <h2 class="text-sm font-bold uppercase tracking-wider text-slate-400 flex items-center gap-2">
+                        <i class="fa-solid fa-image text-cyan-400"></i> Diorama Kondisi Udara
+                    </h2>
+
+                    <!-- Landscape Selector -->
+                    <div class="flex items-center gap-1 bg-slate-900/90 p-1 rounded-xl border border-slate-800 text-xs">
+                        <button onclick="setLandscape('urban')" id="btn-ls-urban" class="px-3 py-1 rounded-lg transition-all font-medium bg-slate-800 text-cyan-400 border border-slate-700">
+                            🏙️ Perkotaan
+                        </button>
+                        <button onclick="setLandscape('rural')" id="btn-ls-rural" class="px-3 py-1 rounded-lg transition-all font-medium text-slate-400 hover:text-white">
+                            🌾 Pedesaan
+                        </button>
+                        <button onclick="setLandscape('mountain')" id="btn-ls-mountain" class="px-3 py-1 rounded-lg transition-all font-medium text-slate-400 hover:text-white">
+                            🏔️ Pegunungan
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Dynamic Visual Landscape Canvas Container -->
+                <div id="landscape-canvas-bg" class="relative w-full h-64 rounded-xl border border-slate-800 overflow-hidden transition-all duration-700 flex flex-col justify-end p-4">
+                    
+                    <!-- Sun / Atmosphere Glow -->
+                    <div id="landscape-sun" class="absolute top-4 right-10 w-16 h-16 rounded-full bg-amber-300 shadow-[0_0_50px_rgba(251,191,36,0.8)] transition-all duration-700"></div>
+
+                    <!-- Smog / Fog Layer -->
+                    <div id="smog-layer" class="absolute inset-0 bg-slate-500/30 backdrop-blur-[1px] smog-layer pointer-events-none transition-opacity duration-700"></div>
+
+                    <!-- SVG Landscape Vector Elements -->
+                    <div id="landscape-svg-container" class="relative z-10 w-full">
+                        <!-- Default Urban SVG Silhouette -->
+                        <svg class="w-full h-36 transition-all duration-500" viewBox="0 0 500 150" fill="none">
+                            <path id="svg-skyline" d="M0,150 L0,110 L20,110 L20,150 L40,150 L40,80 L70,80 L70,150 L90,150 L90,60 L120,60 L120,150 L150,150 L150,95 L180,95 L180,150 L210,150 L210,40 L250,40 L250,150 L290,150 L290,75 L320,75 L320,150 L360,150 L360,90 L400,90 L400,150 L440,150 L440,50 L480,50 L480,150 Z" fill="#1e293b" opacity="0.9"/>
+                            <circle cx="230" cy="45" r="2" fill="#fbbf24" class="animate-ping"/>
+                            <circle cx="105" cy="65" r="2" fill="#ef4444"/>
+                        </svg>
+                    </div>
+
+                    <!-- Environment Info Overlay -->
+                    <div class="relative z-20 bg-slate-900/80 backdrop-blur-md border border-slate-800 p-3 rounded-xl flex items-center justify-between text-xs mt-2">
+                        <div class="flex items-center gap-3">
+                            <span id="diorama-status-icon" class="text-xl">😷</span>
+                            <div>
+                                <div id="diorama-status-title" class="font-bold text-slate-200">Visibilitas Terbatas</div>
+                                <div id="diorama-status-desc" class="text-slate-400 text-[11px]">Kabut asap sedang menutupi pandangan lanskap.</div>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <span class="text-[10px] text-slate-400 uppercase tracking-wider block">Visibilitas</span>
+                            <span id="visibility-km" class="font-bold text-cyan-400 text-sm">6.5 km</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
         </div>
 
-        <!-- Middle Section: Forecast, Geo-fence, AI Recommendations -->
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- GRID SECTION 2: AQI Gauge & Parameter Details + Cigarette Equivalence -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
             
-            <!-- 7 Day Forecast -->
-            <div class="glass-panel rounded-2xl p-6 flex flex-col">
-                <h2 class="text-lg font-semibold mb-4 text-gray-200"><i class="fa-solid fa-chart-line text-blue-400 mr-2"></i> 7-Day Forecast</h2>
-                <div class="flex-1 relative w-full h-48">
+            <!-- Feature 3 Main: AQI Ring & Major Card (5 Cols) -->
+            <div id="aqi-main-card" class="lg:col-span-5 glass-panel rounded-2xl p-6 flex flex-col justify-between relative glow-mod border-amber-500/30">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <span class="text-xs uppercase font-semibold text-slate-400 tracking-wider">Indeks Kualitas Udara (AQI)</span>
+                        <h3 id="aqi-location-heading" class="text-lg font-extrabold text-white mt-0.5">Malang, Jawa Timur</h3>
+                    </div>
+                    <span id="aqi-level-badge" class="px-3 py-1 rounded-full text-xs font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                        Sedang
+                    </span>
+                </div>
+
+                <!-- Gauge Donut & Center Score -->
+                <div class="relative flex items-center justify-center my-6">
+                    <canvas id="aqiGaugeChart" class="max-w-[210px] max-h-[210px]"></canvas>
+                    <div class="absolute inset-0 flex flex-col items-center justify-center text-center">
+                        <span id="aqi-value-text" class="text-5xl font-black tracking-tight text-amber-400">78</span>
+                        <span class="text-[11px] text-slate-400 uppercase tracking-widest mt-1">US AQI</span>
+                    </div>
+                </div>
+
+                <!-- Cigarette Equivalent Box -->
+                <div class="bg-slate-900/90 border border-slate-800 rounded-xl p-3.5 flex items-center gap-3.5">
+                    <div class="w-10 h-10 rounded-lg bg-orange-500/10 border border-orange-500/30 flex items-center justify-center text-orange-400 text-lg shrink-0 relative">
+                        <i class="fa-solid fa-smoking"></i>
+                        <span class="w-1.5 h-1.5 rounded-full bg-orange-400 absolute top-2 right-2 smoke-particle"></span>
+                    </div>
+                    <div>
+                        <div class="text-xs text-slate-400">Ekivalensi Paparan Asap Rokok</div>
+                        <div id="cette-text" class="text-xs font-bold text-slate-200 mt-0.5">
+                            PM2.5 setara <span class="text-amber-400">~1.4 batang rokok</span> per hari!
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Detailed Pollutant Grid (7 Cols) -->
+            <div class="lg:col-span-7 glass-panel rounded-2xl p-6 flex flex-col justify-between">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-sm font-bold uppercase tracking-wider text-slate-400 flex items-center gap-2">
+                        <i class="fa-solid fa-chart-simple text-cyan-400"></i> Detail Konsentrasi Polutan & Cuaca
+                    </h3>
+                    <span class="text-xs text-slate-500">Satuan: µg/m³</span>
+                </div>
+
+                <!-- Pollutants Grid -->
+                <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                    <!-- PM2.5 -->
+                    <div class="glass-card rounded-xl p-3.5 border border-slate-800">
+                        <div class="flex justify-between text-xs text-slate-400">
+                            <span>PM 2.5</span>
+                            <i class="fa-solid fa-circle-info hover:text-cyan-400 cursor-pointer" title="Partikel halus < 2.5 mikron"></i>
+                        </div>
+                        <div id="val-pm25" class="text-xl font-bold text-amber-400 mt-1">32.4</div>
+                        <div class="text-[10px] text-slate-500 mt-1">Batas WHO: 15 µg/m³</div>
+                    </div>
+
+                    <!-- PM10 -->
+                    <div class="glass-card rounded-xl p-3.5 border border-slate-800">
+                        <div class="flex justify-between text-xs text-slate-400">
+                            <span>PM 10</span>
+                            <i class="fa-solid fa-circle-info hover:text-cyan-400 cursor-pointer" title="Partikel kasar < 10 mikron"></i>
+                        </div>
+                        <div id="val-pm10" class="text-xl font-bold text-emerald-400 mt-1">45.0</div>
+                        <div class="text-[10px] text-slate-500 mt-1">Batas WHO: 45 µg/m³</div>
+                    </div>
+
+                    <!-- O3 -->
+                    <div class="glass-card rounded-xl p-3.5 border border-slate-800">
+                        <div class="flex justify-between text-xs text-slate-400">
+                            <span>Ozon (O₃)</span>
+                        </div>
+                        <div id="val-o3" class="text-xl font-bold text-emerald-400 mt-1">18.2</div>
+                        <div class="text-[10px] text-slate-500 mt-1">Normal</div>
+                    </div>
+
+                    <!-- NO2 -->
+                    <div class="glass-card rounded-xl p-3.5 border border-slate-800">
+                        <div class="flex justify-between text-xs text-slate-400">
+                            <span>NO₂</span>
+                        </div>
+                        <div id="val-no2" class="text-xl font-bold text-emerald-400 mt-1">12.8</div>
+                        <div class="text-[10px] text-slate-500 mt-1">Normal (Emisi)</div>
+                    </div>
+
+                    <!-- SO2 -->
+                    <div class="glass-card rounded-xl p-3.5 border border-slate-800">
+                        <div class="flex justify-between text-xs text-slate-400">
+                            <span>SO₂</span>
+                        </div>
+                        <div id="val-so2" class="text-xl font-bold text-emerald-400 mt-1">5.1</div>
+                        <div class="text-[10px] text-slate-500 mt-1">Rendah</div>
+                    </div>
+
+                    <!-- CO -->
+                    <div class="glass-card rounded-xl p-3.5 border border-slate-800">
+                        <div class="flex justify-between text-xs text-slate-400">
+                            <span>CO</span>
+                        </div>
+                        <div id="val-co" class="text-xl font-bold text-emerald-400 mt-1">420.0</div>
+                        <div class="text-[10px] text-slate-500 mt-1">Karbon Monoksida</div>
+                    </div>
+                </div>
+
+                <!-- Weather Bar -->
+                <div class="mt-4 pt-3 border-t border-slate-800/80 grid grid-cols-3 gap-2 text-center text-xs">
+                    <div class="bg-slate-900/60 p-2 rounded-lg">
+                        <span class="text-slate-400 block text-[10px]">Suhu</span>
+                        <span id="val-temp" class="font-bold text-slate-200">26°C</span>
+                    </div>
+                    <div class="bg-slate-900/60 p-2 rounded-lg">
+                        <span class="text-slate-400 block text-[10px]">Kelembapan</span>
+                        <span id="val-humidity" class="font-bold text-slate-200">72%</span>
+                    </div>
+                    <div class="bg-slate-900/60 p-2 rounded-lg">
+                        <span class="text-slate-400 block text-[10px]">Kecepatan Angin</span>
+                        <span id="val-wind" class="font-bold text-slate-200">11 km/h</span>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- GRID SECTION 3: 3 Smart Features (AI Recs, 7-Day Forecast, Geo-Fencing Alerts) -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            
+            <!-- Smart Recs (4 Cols) -->
+            <div class="lg:col-span-4 glass-panel rounded-2xl p-5 flex flex-col justify-between">
+                <div>
+                    <h3 class="text-sm font-bold uppercase tracking-wider text-slate-400 mb-3 flex items-center gap-2">
+                        <i class="fa-solid fa-robot text-cyan-400"></i> Rekomendasi Pintar AI
+                    </h3>
+                    <div class="space-y-2.5">
+                        <div class="glass-card p-3 rounded-xl flex items-start gap-3 border border-slate-800">
+                            <div class="w-8 h-8 rounded-lg bg-blue-500/10 text-blue-400 flex items-center justify-center shrink-0">
+                                <i class="fa-solid fa-head-side-mask"></i>
+                            </div>
+                            <div>
+                                <div class="text-xs font-bold text-slate-200">Penggunaan Masker</div>
+                                <div id="rec-mask" class="text-[11px] text-slate-400 mt-0.5">Masker medis cukup untuk aktivitas luar ruangan normal.</div>
+                            </div>
+                        </div>
+
+                        <div class="glass-card p-3 rounded-xl flex items-start gap-3 border border-slate-800">
+                            <div class="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center shrink-0">
+                                <i class="fa-solid fa-[#000] fa-wind"></i>
+                            </div>
+                            <div>
+                                <div class="text-xs font-bold text-slate-200">Ventilasi Rumah & Purifier</div>
+                                <div id="rec-purifier" class="text-[11px] text-slate-400 mt-0.5">Tutup jendela pada sore hari saat lalu lintas padat.</div>
+                            </div>
+                        </div>
+
+                        <div class="glass-card p-3 rounded-xl flex items-start gap-3 border border-slate-800">
+                            <div class="w-8 h-8 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center shrink-0">
+                                <i class="fa-solid fa-child-reaching"></i>
+                            </div>
+                            <div>
+                                <div class="text-xs font-bold text-slate-200">Kelompok Rentan</div>
+                                <div id="rec-vulnerable" class="text-[11px] text-slate-400 mt-0.5">Anak & lansia disarankan membatasi olahraga berat di luar.</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 7-Day Forecast Chart (5 Cols) -->
+            <div class="lg:col-span-5 glass-panel rounded-2xl p-5 flex flex-col justify-between">
+                <div class="flex justify-between items-center mb-3">
+                    <h3 class="text-sm font-bold uppercase tracking-wider text-slate-400 flex items-center gap-2">
+                        <i class="fa-solid fa-chart-line text-cyan-400"></i> Prediksi AQI 7 Hari Ke Depan
+                    </h3>
+                    <span class="text-[10px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded">AI Forecast</span>
+                </div>
+                <div class="relative w-full h-48">
                     <canvas id="forecastChart"></canvas>
                 </div>
             </div>
 
-            <!-- Geo-fencing & Map Alerts -->
-            <div class="glass-panel rounded-2xl p-6">
-                <h2 class="text-lg font-semibold mb-4 text-gray-200"><i class="fa-solid fa-map-location-dot text-red-400 mr-2"></i> Geo-fence Alerts</h2>
-                
-                <div class="space-y-3" id="geo-alerts">
-                    <!-- Dynamic Alerts -->
+            <!-- Geo-fencing Alert Center (3 Cols) -->
+            <div class="lg:col-span-3 glass-panel rounded-2xl p-5 flex flex-col justify-between">
+                <div>
+                    <h3 class="text-sm font-bold uppercase tracking-wider text-slate-400 mb-3 flex items-center gap-2">
+                        <i class="fa-solid fa-triangle-exclamation text-amber-400"></i> Peringatan Geofence
+                    </h3>
+                    <div class="space-y-2">
+                        <div id="geofence-status" class="bg-amber-500/10 border border-amber-500/30 rounded-xl p-3">
+                            <div class="flex items-center gap-2 text-amber-400 font-bold text-xs">
+                                <i class="fa-solid fa-circle-exclamation"></i>
+                                Zona Industri Terdekat
+                            </div>
+                            <p class="text-[11px] text-slate-300 mt-1">
+                                Radius 4.2 km dari kawasan pabrik emisi tinggi. Potensi fluktuasi SO2.
+                            </p>
+                        </div>
+                        <button onclick="triggerSimulatedAlert()" class="w-full mt-2 py-2 bg-slate-800 hover:bg-slate-700 text-cyan-400 border border-cyan-500/30 text-xs font-semibold rounded-xl transition">
+                            <i class="fa-solid fa-satellite-dish mr-1"></i> Uji Simulasi Peringatan
+                        </button>
+                    </div>
                 </div>
             </div>
 
-            <!-- AI Health Analysis -->
-            <div class="glass-panel rounded-2xl p-6 bg-gradient-to-b from-blue-900/20 to-transparent">
-                <h2 class="text-lg font-semibold mb-4 text-gray-200 flex items-center gap-2">
-                    <i class="fa-solid fa-brain text-purple-400"></i> AI Health Analysis
-                </h2>
-                
-                <div class="space-y-4">
-                    <div class="bg-gray-900/40 p-3 rounded-xl border border-white/5">
-                        <h3 class="text-xs font-semibold text-gray-400 mb-1 uppercase tracking-wider">Condition Summary</h3>
-                        <p id="ai-summary" class="text-sm text-gray-200 leading-relaxed">Air quality is acceptable; however, for some pollutants there may be a moderate health concern for a very small number of people who are unusually sensitive to air pollution.</p>
+        </div>
+
+        <!-- GRID SECTION 4: System Analisis AI & Kesehatan Paru (Feature 6) -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            
+            <!-- AI Analysis Narration (6 Cols) -->
+            <div class="lg:col-span-6 glass-panel rounded-2xl p-6">
+                <h3 class="text-sm font-bold uppercase tracking-wider text-slate-400 mb-3 flex items-center gap-2">
+                    <i class="fa-solid fa-brain text-cyan-400"></i> Diagnostic & Analysis AI Engine
+                </h3>
+                <div class="bg-slate-900/80 border border-slate-800 rounded-xl p-4 space-y-3">
+                    <p id="ai-nartive-summary" class="text-xs leading-relaxed text-slate-300">
+                        Kualitas udara di <span class="font-bold text-cyan-400">Malang</span> saat ini berada pada tingkat <span class="text-amber-400 font-bold">Sedang</span>. Faktor utama didominasi oleh partisipan PM2.5 akibat emisi kendaraan di jam sibuk dan kelembapan udara relatif tinggi.
+                    </p>
+                    
+                    <div class="border-t border-slate-800 pt-3">
+                        <div class="text-xs font-bold text-slate-200 mb-2">3 Langkah Aksi Mitigasi:</div>
+                        <ul class="text-xs text-slate-400 space-y-1.5 list-disc list-inside">
+                            <li>Gunakan pemurni udara (Air Purifier) di ruang tidur.</li>
+                            <li>Gunakan masker kain/medis saat berkendara roda dua.</li>
+                            <li>Pantau pembaruan AQI sebelum beraktivitas outdoor sore hari.</li>
+                        </ul>
                     </div>
-                    <div class="bg-gray-900/40 p-3 rounded-xl border border-white/5">
-                        <h3 class="text-xs font-semibold text-gray-400 mb-1 uppercase tracking-wider">Activity Recommendation</h3>
-                        <p id="ai-activity" class="text-sm text-gray-200 leading-relaxed flex items-start gap-2">
-                            <i class="fa-solid fa-person-running text-green-400 mt-1"></i>
-                            <span>Active children and adults, and people with respiratory disease, such as asthma, should limit prolonged outdoor exertion.</span>
+                </div>
+            </div>
+
+            <!-- Lungs & Sport Advice (6 Cols) -->
+            <div class="lg:col-span-6 glass-panel rounded-2xl p-6">
+                <h3 class="text-sm font-bold uppercase tracking-wider text-slate-400 mb-3 flex items-center gap-2">
+                    <i class="fa-solid fa-heart-pulse text-red-400"></i> Rekomendasi Olahraga & Kesehatan Paru
+                </h3>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div class="glass-card rounded-xl p-3.5 border border-slate-800">
+                        <div class="text-xs font-bold text-slate-200 flex items-center gap-2 mb-1">
+                            <i class="fa-solid fa-person-running text-cyan-400"></i> Panduan Olahraga
+                        </div>
+                        <p id="sport-advice" class="text-[11px] text-slate-400">
+                            Aman untuk Jogging di area hijau / taman hingga 45 menit. Hindari jalan raya utama.
+                        </p>
+                    </div>
+
+                    <div class="glass-card rounded-xl p-3.5 border border-slate-800">
+                        <div class="text-xs font-bold text-slate-200 flex items-center gap-2 mb-1">
+                            <i class="fa-solid fa-lungs text-pink-400"></i> Perawatan Paru-Paru
+                        </div>
+                        <p id="lungs-advice" class="text-[11px] text-slate-400">
+                            Konsumsi makanan kaya antioksidan (Vitamin C & E) serta minum air hangat min 2.5 liter per hari.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- GRID SECTION 5: Custom Stats Builder (Feature 7) -->
+        <div class="glass-panel rounded-2xl p-6">
+            <div class="flex flex-wrap justify-between items-center gap-4 mb-4">
+                <div>
+                    <h3 class="text-base font-bold text-white flex items-center gap-2">
+                        <i class="fa-solid fa-sliders text-cyan-400"></i> Builder Statistik Kustom & Analisis Tren
+                    </h3>
+                    <p class="text-xs text-slate-400">Masukkan data kustom untuk membentuk kurva pengamatan independen.</p>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button onclick="clearCustomStats()" class="px-3 py-1.5 text-xs bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 rounded-xl transition">
+                        <i class="fa-solid fa-trash-can mr-1"></i> Hapus Semua Data
+                    </button>
+                </div>
+            </div>
+
+            <!-- Custom Input Form -->
+            <div class="bg-slate-900/90 border border-slate-800 rounded-xl p-4 mb-6">
+                <form id="custom-data-form" onsubmit="addCustomStat(event)" class="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                    <div>
+                        <label class="block text-xs text-slate-400 mb-1">Label Waktu / Tanggal</label>
+                        <input type="text" id="cust-time" placeholder="Misal: 08:00 WIB" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-cyan-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-slate-400 mb-1">Nilai Parameter</label>
+                        <input type="number" step="0.1" id="cust-val" placeholder="Nilai (misal: 115)" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-cyan-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-slate-400 mb-1">Jenis Parameter</label>
+                        <select id="cust-type" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-cyan-500">
+                            <option value="AQI">Indeks AQI (Batas Aman <= 100)</option>
+                            <option value="PM2.5">PM2.5 µg/m³ (Batas Aman <= 35.5)</option>
+                            <option value="PM10">PM10 µg/m³ (Batas Aman <= 150)</option>
+                        </select>
+                    </div>
+                    <div class="flex items-end">
+                        <button type="submit" class="w-full bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-semibold py-2 px-4 rounded-xl transition shadow-md">
+                            <i class="fa-solid fa-plus mr-1"></i> Tambahkan Data
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Custom Chart & Table Grid -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                <!-- Custom Chart (7 Cols) -->
+                <div class="lg:col-span-7">
+                    <div class="w-full h-64 bg-slate-900/50 p-3 rounded-xl border border-slate-800">
+                        <canvas id="customStatsChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Custom Table & AI Analysis (5 Cols) -->
+                <div class="lg:col-span-5 flex flex-col justify-between space-y-4">
+                    <!-- Table -->
+                    <div class="overflow-y-auto max-h-40 border border-slate-800 rounded-xl">
+                        <table class="w-full text-left text-xs text-slate-300">
+                            <thead class="bg-slate-900 text-slate-400 sticky top-0">
+                                <tr>
+                                    <th class="p-2">Waktu</th>
+                                    <th class="p-2">Nilai</th>
+                                    <th class="p-2">Status</th>
+                                    <th class="p-2 text-right">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody id="custom-table-body">
+                                <!-- Populated dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Dynamic AI Custom Trend Analysis -->
+                    <div class="bg-cyan-950/20 border border-cyan-500/30 rounded-xl p-3.5">
+                        <div class="text-xs font-bold text-cyan-400 mb-1 flex items-center gap-1.5">
+                            <i class="fa-solid fa-microchip"></i> Analisis Keseluruhan Tren Kustom
+                        </div>
+                        <p id="custom-ai-analysis-text" class="text-[11px] text-slate-300 leading-relaxed">
+                            Belum ada data kustom yang cukup untuk membentuk tren analisis.
                         </p>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Lower Section: Advanced Calc & Custom Stats -->
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            
-            <!-- AQI Calculator -->
-            <div class="glass-panel rounded-2xl p-6">
-                <div class="flex justify-between items-center mb-4">
-                    <h2 class="text-lg font-semibold text-gray-200"><i class="fa-solid fa-calculator text-emerald-400 mr-2"></i> AQI Calculator</h2>
-                    <button id="info-btn" class="text-gray-400 hover:text-white"><i class="fa-solid fa-circle-question"></i></button>
+        <!-- GRID SECTION 6: Advanced AQI Calculator with Formula & History (Feature 4) -->
+        <div class="glass-panel rounded-2xl p-6">
+            <div class="flex flex-wrap justify-between items-center gap-4 mb-4">
+                <div>
+                    <h3 class="text-base font-bold text-white flex items-center gap-2">
+                        <i class="fa-solid fa-calculator text-cyan-400"></i> Kalkulator AQI Lanjutan & Formula EPA
+                    </h3>
+                    <p class="text-xs text-slate-400">Hitung nilai AQI secara presisi menggunakan kalkulasi Breakpoint linear.</p>
                 </div>
-                
-                <div class="grid grid-cols-2 gap-4 mb-4">
-                    <div>
-                        <label class="block text-xs text-gray-400 mb-1">PM2.5 (µg/m³)</label>
-                        <input type="number" id="calc-pm25" class="glass-input w-full p-2.5 rounded-lg text-sm" placeholder="e.g. 15.5">
-                    </div>
-                    <div>
-                        <label class="block text-xs text-gray-400 mb-1">PM10 (µg/m³)</label>
-                        <input type="number" id="calc-pm10" class="glass-input w-full p-2.5 rounded-lg text-sm" placeholder="e.g. 50">
-                    </div>
-                </div>
-                <button id="btn-calc" class="w-full py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-medium transition-colors shadow-lg shadow-emerald-500/20 mb-4">Calculate Exact AQI</button>
-                
-                <div id="calc-result" class="hidden bg-gray-900/60 p-4 rounded-xl border border-emerald-500/30 text-center mb-4">
-                    <p class="text-sm text-gray-300">Calculated AQI</p>
-                    <p class="text-3xl font-bold text-emerald-400" id="calc-aqi-val">--</p>
-                </div>
-
-                <div class="h-32 overflow-y-auto">
-                    <h3 class="text-xs text-gray-500 mb-2 uppercase sticky top-0 bg-[#0f172a]/90 py-1">Calculation History</h3>
-                    <ul id="calc-history" class="space-y-2 text-sm text-gray-300">
-                        <!-- History items -->
-                        <li class="text-gray-500 text-center text-xs py-2 italic">No history yet.</li>
-                    </ul>
-                </div>
+                <button onclick="toggleFormulaModal()" class="px-3 py-1.5 text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 rounded-xl transition">
+                    <i class="fa-solid fa-book-open mr-1"></i> Lihat Rumus Perhitungan
+                </button>
             </div>
 
-            <!-- Custom Stats Builder -->
-            <div class="glass-panel rounded-2xl p-6 flex flex-col">
-                <h2 class="text-lg font-semibold mb-4 text-gray-200"><i class="fa-solid fa-chart-bar text-pink-400 mr-2"></i> Custom Stats Builder</h2>
-                
-                <div class="flex gap-2 mb-4">
-                    <input type="text" id="cs-label" class="glass-input flex-1 p-2 rounded-lg text-sm" placeholder="Time/Label (e.g. 10:00 AM)">
-                    <input type="number" id="cs-val" class="glass-input w-24 p-2 rounded-lg text-sm" placeholder="AQI Val">
-                    <button id="btn-add-cs" class="bg-pink-600 hover:bg-pink-500 text-white px-4 rounded-lg text-sm font-medium transition-colors shadow-lg shadow-pink-500/20"><i class="fa-solid fa-plus"></i></button>
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                <!-- Calc Form (7 Cols) -->
+                <div class="lg:col-span-7 bg-slate-900/90 border border-slate-800 rounded-xl p-4">
+                    <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4">
+                        <div>
+                            <label class="block text-[11px] text-slate-400 mb-1">PM2.5 (µg/m³)</label>
+                            <input type="number" step="0.1" id="calc-pm25" value="35.4" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-slate-200">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] text-slate-400 mb-1">PM10 (µg/m³)</label>
+                            <input type="number" step="0.1" id="calc-pm10" value="50.0" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-slate-200">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] text-slate-400 mb-1">O3 (ppb)</label>
+                            <input type="number" step="0.1" id="calc-o3" value="20.0" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-slate-200">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] text-slate-400 mb-1">NO2 (ppb)</label>
+                            <input type="number" step="0.1" id="calc-no2" value="15.0" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-slate-200">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] text-slate-400 mb-1">SO2 (ppb)</label>
+                            <input type="number" step="0.1" id="calc-so2" value="5.0" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-slate-200">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] text-slate-400 mb-1">CO (ppm)</label>
+                            <input type="number" step="0.1" id="calc-co" value="1.2" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-slate-200">
+                        </div>
+                    </div>
+
+                    <div class="flex items-center justify-between pt-2 border-t border-slate-800">
+                        <button onclick="calculateManualAQI()" class="bg-cyan-600 hover:bg-cyan-500 text-white font-semibold px-4 py-2 rounded-xl text-xs transition shadow-lg shadow-cyan-600/30">
+                            Hitung AQI & Simpan Riwayat
+                        </button>
+                        <div id="calc-result-display" class="text-xs font-bold text-slate-300">
+                            Hasil: <span class="text-amber-400 text-sm font-extrabold">AQI 101 (PM2.5)</span>
+                        </div>
+                    </div>
                 </div>
 
-                <div class="flex-1 w-full h-40 relative mb-4">
-                    <canvas id="customChart"></canvas>
-                </div>
-                
-                <div class="bg-pink-900/20 p-3 rounded-xl border border-pink-500/20 mb-4">
-                    <h3 class="text-xs font-semibold text-pink-300 mb-1">Custom Trend Analysis</h3>
-                    <p id="cs-analysis" class="text-sm text-gray-300">Add data points to see trend analysis.</p>
-                </div>
-
-                <div class="h-24 overflow-y-auto">
-                     <ul id="cs-list" class="space-y-1 text-sm text-gray-300">
-                        <!-- Custom items -->
-                     </ul>
+                <!-- History List (5 Cols) -->
+                <div class="lg:col-span-5 flex flex-col justify-between">
+                    <h4 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Riwayat Kalkulasi Manual</h4>
+                    <div class="overflow-y-auto h-40 border border-slate-800 rounded-xl bg-slate-900/50 p-2 space-y-2" id="calc-history-container">
+                        <!-- Populated dynamically -->
+                    </div>
                 </div>
             </div>
         </div>
 
-        <!-- Bottom News Section -->
-        <div>
-            <h2 class="text-xl font-bold mb-4 text-gray-200 border-b border-white/10 pb-2"><i class="fa-solid fa-newspaper text-gray-400 mr-2"></i> Environmental News</h2>
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <!-- News Card 1 -->
-                <div class="glass-panel rounded-xl overflow-hidden hover:-translate-y-1 transition-transform cursor-pointer group">
-                    <div class="h-32 bg-gray-800 relative overflow-hidden">
-                        <img src="https://placehold.co/400x200/1e293b/94a3b8?text=Pollution+Peak" class="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" alt="news">
-                    </div>
-                    <div class="p-4">
-                        <p class="text-xs text-cyan-400 mb-1">Global</p>
-                        <h3 class="text-sm font-semibold text-gray-200 line-clamp-2">New WHO Guidelines Demand Stricter PM2.5 Controls</h3>
-                    </div>
+        <!-- SECTION 7: Berita & Artikel Edukasi Polusi Udara (Feature 8) -->
+        <div class="glass-panel rounded-2xl p-6">
+            <div class="flex flex-wrap justify-between items-center gap-4 mb-6">
+                <div>
+                    <h3 class="text-base font-bold text-white flex items-center gap-2">
+                        <i class="fa-solid fa-newspaper text-cyan-400"></i> Berita & Artikel Edukasi Kualitas Udara
+                    </h3>
+                    <p class="text-xs text-slate-400">Informasi terbaru seputar riset kesehatan, emisi, dan teknologi hijau.</p>
                 </div>
-                <!-- News Card 2 -->
-                <div class="glass-panel rounded-xl overflow-hidden hover:-translate-y-1 transition-transform cursor-pointer group">
-                    <div class="h-32 bg-gray-800 relative overflow-hidden">
-                        <img src="https://placehold.co/400x200/1e293b/94a3b8?text=City+Smog" class="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" alt="news">
-                    </div>
-                    <div class="p-4">
-                        <p class="text-xs text-cyan-400 mb-1">Local</p>
-                        <h3 class="text-sm font-semibold text-gray-200 line-clamp-2">Urban Centers Experience Unprecedented Smog Levels This Week</h3>
-                    </div>
+                <div class="flex items-center gap-2">
+                    <button onclick="filterNews('all')" class="px-3 py-1 text-xs rounded-lg bg-slate-800 text-slate-300 border border-slate-700 hover:bg-slate-700">Semua</button>
+                    <button onclick="filterNews('kesehatan')" class="px-3 py-1 text-xs rounded-lg bg-slate-800 text-slate-300 border border-slate-700 hover:bg-slate-700">Kesehatan</button>
+                    <button onclick="filterNews('teknologi')" class="px-3 py-1 text-xs rounded-lg bg-slate-800 text-slate-300 border border-slate-700 hover:bg-slate-700">Teknologi</button>
                 </div>
-                <!-- News Card 3 -->
-                <div class="glass-panel rounded-xl overflow-hidden hover:-translate-y-1 transition-transform cursor-pointer group">
-                    <div class="h-32 bg-gray-800 relative overflow-hidden">
-                        <img src="https://placehold.co/400x200/1e293b/94a3b8?text=Green+Tech" class="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" alt="news">
-                    </div>
-                    <div class="p-4">
-                        <p class="text-xs text-cyan-400 mb-1">Technology</p>
-                        <h3 class="text-sm font-semibold text-gray-200 line-clamp-2">Startups Develop Advanced Air Filtration Utilizing AI Monitoring</h3>
-                    </div>
-                </div>
-                <!-- News Card 4 -->
-                <div class="glass-panel rounded-xl overflow-hidden hover:-translate-y-1 transition-transform cursor-pointer group">
-                    <div class="h-32 bg-gray-800 relative overflow-hidden">
-                        <img src="https://placehold.co/400x200/1e293b/94a3b8?text=Health+Impact" class="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" alt="news">
-                    </div>
-                    <div class="p-4">
-                        <p class="text-xs text-cyan-400 mb-1">Health</p>
-                        <h3 class="text-sm font-semibold text-gray-200 line-clamp-2">Long-term Exposure to PM10 Linked to Respiratory Issues</h3>
-                    </div>
-                </div>
+            </div>
+
+            <div id="news-grid-container" class="grid grid-cols-1 md:grid-cols-3 gap-5">
+                <!-- Populated dynamically via JS -->
             </div>
         </div>
 
     </main>
 
-    <!-- Info Modal -->
-    <div id="modal-info" class="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm hidden flex items-center justify-center p-4">
-        <div class="bg-slate-800 border border-slate-600 rounded-2xl max-w-md w-full p-6 shadow-2xl">
-            <h3 class="text-xl font-bold mb-4 text-white">AQI Calculation Logic</h3>
-            <p class="text-sm text-gray-300 mb-4">
-                The Air Quality Index is a piecewise linear function of the pollutant concentration. 
-                Formula: <br><br>
-                <code class="bg-black/50 p-2 rounded block font-mono text-xs text-emerald-400">
-                Ip = [(Ihi-Ilo)/(BPhi-BPlo)] * (Cp-BPlo) + Ilo
-                </code>
-                <br>
-                Where <i>Cp</i> is the rounded concentration of pollutant <i>p</i>, <i>BPhi/BPlo</i> are the breakpoints, and <i>Ihi/Ilo</i> are the corresponding AQI values.
+    <!-- Modal Rumus AQI -->
+    <div id="formula-modal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden flex items-center justify-center p-4">
+        <div class="glass-panel max-w-lg w-full rounded-2xl p-6 border border-slate-700 relative">
+            <button onclick="toggleFormulaModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+            <h3 class="text-lg font-bold text-white mb-2">Rumus Breakpoint Linear AQI</h3>
+            <p class="text-xs text-slate-300 leading-relaxed mb-4">
+                Standar US-EPA menghitung AQI menggunakan rumus interpolasi linier berdasarkan konsentrasi polutan terukur:
             </p>
-            <button id="close-modal" class="w-full py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-white font-medium transition-colors">Close</button>
+            <div class="bg-slate-900 p-3 rounded-xl border border-slate-800 font-mono text-xs text-cyan-300 text-center mb-4">
+                I = [ (I_hi - I_lo) / (C_hi - C_lo) ] * (C - C_lo) + I_lo
+            </div>
+            <ul class="text-xs text-slate-400 space-y-1.5 list-disc list-inside">
+                <li><b>C:</b> Konsentrasi polutan terukur</li>
+                <li><b>C_lo & C_hi:</b> Rentang Breakpoint konsentrasi</li>
+                <li><b>I_lo & I_hi:</b> Rentang Breakpoint nilai AQI</li>
+            </ul>
         </div>
     </div>
 
-    <!-- Notification Container -->
-    <div id="notification-area" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2"></div>
+    <!-- Modal Article Reader -->
+    <div id="article-modal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden flex items-center justify-center p-4">
+        <div class="glass-panel max-w-xl w-full rounded-2xl p-6 border border-slate-700 relative max-h-[85vh] overflow-y-auto">
+            <button onclick="closeArticleModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+            <span id="art-cat" class="px-2.5 py-1 rounded-full text-[10px] font-bold bg-cyan-500/20 text-cyan-400 border border-cyan-500/30">Kategori</span>
+            <h3 id="art-title" class="text-xl font-bold text-white mt-2 mb-3">Judul Artikel</h3>
+            <div id="art-content" class="text-xs text-slate-300 space-y-3 leading-relaxed">
+                <!-- Content inserted via JS -->
+            </div>
+        </div>
+    </div>
 
+    <!-- JAVASCRIPT APP LOGIC -->
     <script>
-        // --- State Management ---
-        const state = {
-            aqi: 125,
-            city: 'Malang',
-            standard: 'WHO', // 'WHO' or 'EPA'
-            landscape: 'urban',
-            customStats: [
-                { label: 'Mon', value: 45 },
-                { label: 'Tue', value: 85 },
-                { label: 'Wed', value: 110 }
-            ],
-            calcHistory: []
+        /* -------------------------------------------------------------
+           MOCK DATA & STATE MANAGEMENT
+        ------------------------------------------------------------- */
+        const regionDatabase = {
+            "Indonesia": {
+                "Jawa Timur": {
+                    "Malang": { lat: "-7.9666° S", long: "112.6326° E", aqi: 78, pm25: 32.4, pm10: 45.0, o3: 18.2, no2: 12.8, so2: 5.1, co: 420, temp: 26, humidity: 72, wind: 11, landscape: "mountain" },
+                    "Surabaya": { lat: "-7.2575° S", long: "112.7521° E", aqi: 125, pm25: 55.2, pm10: 82.0, o3: 24.5, no2: 28.1, so2: 12.0, co: 750, temp: 31, humidity: 65, wind: 14, landscape: "urban" },
+                    "Batu": { lat: "-7.8702° S", long: "112.5271° E", aqi: 35, pm25: 12.0, pm10: 22.0, o3: 10.1, no2: 5.2, so2: 2.1, co: 210, temp: 21, humidity: 80, wind: 8, landscape: "mountain" }
+                },
+                "DKI Jakarta": {
+                    "Jakarta Selatan": { lat: "-6.2615° S", long: "106.8106° E", aqi: 158, pm25: 68.5, pm10: 105.0, o3: 35.0, no2: 42.0, so2: 18.4, co: 920, temp: 32, humidity: 70, wind: 9, landscape: "urban" },
+                    "Jakarta Pusat": { lat: "-6.1805° S", long: "106.8284° E", aqi: 165, pm25: 72.1, pm10: 112.0, o3: 38.2, no2: 48.5, so2: 21.0, co: 980, temp: 33, humidity: 68, wind: 7, landscape: "urban" }
+                },
+                "Jawa Barat": {
+                    "Bandung": { lat: "-6.9175° S", long: "107.6191° E", aqi: 62, pm25: 24.1, pm10: 38.0, o3: 15.0, no2: 14.2, so2: 4.8, co: 380, temp: 24, humidity: 75, wind: 10, landscape: "mountain" }
+                }
+            },
+            "Malaysia": {
+                "Kuala Lumpur": {
+                    "Kuala Lumpur": { lat: "3.1390° N", long: "101.6869° E", aqi: 88, pm25: 38.0, pm10: 52.0, o3: 20.0, no2: 18.0, so2: 7.0, co: 510, temp: 29, humidity: 78, wind: 12, landscape: "urban" }
+                }
+            },
+            "Singapura": {
+                "Central": {
+                    "Singapore City": { lat: "1.3521° N", long: "103.8198° E", aqi: 42, pm25: 15.5, pm10: 28.0, o3: 12.0, no2: 10.0, so2: 3.5, co: 300, temp: 28, humidity: 82, wind: 15, landscape: "urban" }
+                }
+            }
         };
 
-        // --- Configuration & Constants ---
-        const thresholds = {
-            WHO: { pm25_limit: 15, max_good: 50 },
-            EPA: { pm25_limit: 35, max_good: 50 }
-        };
-
-        const aqiCategories = [
-            { max: 50, label: 'Good', color: '#10B981', bg: 'bg-emerald-500/20', text: 'text-emerald-400', border: 'border-emerald-500/30' },
-            { max: 100, label: 'Moderate', color: '#FBBF24', bg: 'bg-yellow-500/20', text: 'text-yellow-400', border: 'border-yellow-500/30' },
-            { max: 150, label: 'Unhealthy (Sens)', color: '#F97316', bg: 'bg-orange-500/20', text: 'text-orange-400', border: 'border-orange-500/30' },
-            { max: 200, label: 'Unhealthy', color: '#EF4444', bg: 'bg-red-500/20', text: 'text-red-400', border: 'border-red-500/30' },
-            { max: 300, label: 'Very Unhealthy', color: '#8B5CF6', bg: 'bg-purple-500/20', text: 'text-purple-400', border: 'border-purple-500/30' },
-            { max: 999, label: 'Hazardous', color: '#9F1239', bg: 'bg-rose-900/40', text: 'text-rose-400', border: 'border-rose-500/30' }
+        const newsDatabase = [
+            {
+                id: 1,
+                category: "kesehatan",
+                title: "Dampak Jangka Panjang PM2.5 pada Kesehatan Paru-Paru Anak",
+                desc: "Riset terbaru menunjukkan paparan mikro-partikel konsisten dapat menurunkan kapasitas vital paru-paru hingga 12%.",
+                date: "24 Okt 2026",
+                content: "Studi komprehensif dari organisasi kesehatan global menegaskan bahwa paparan partikel halus (PM2.5) melebihi batas WHO dapat menyusup hingga ke alveoli paru-paru. Penelitian menyarankan pemasangan pemurni udara HEPA di ruang kelas dan tempat tidur anak untuk menekan risiko asma kronis."
+            },
+            {
+                id: 2,
+                category: "teknologi",
+                title: "Inovasi Sensor Optik AI untuk Deteksi Polusi Mikro Real-Time",
+                desc: "Teknologi pencitraan laser terbaru mampu mengukur konsentrasi polutan dengan presisi 99% dalam kurun mikrodetik.",
+                date: "22 Okt 2026",
+                content: "Para peneliti telah mengembangkan sensor hemat daya berteknologi AI yang menggabungkan analisis hamburan cahaya laser dengan jaringan saraf tiruan. Alat ini memungkingkan sistem peta geofencing kota cerdas memberikan notifikasi bahaya secara real-time kepada warga."
+            },
+            {
+                id: 3,
+                category: "kesehatan",
+                title: "Cara Efektif Menjaga Ketahanan Tubuh saat Polusi Udara Tinggi",
+                desc: "Konsumsi makanan kaya antioksidan dan olahraga indoor teratur terbukti efektif menangkal radikal bebas.",
+                date: "20 Okt 2026",
+                content: "Menghadapi kualitas udara yang fluktuatif, para ahli gizi menyarankan peningkatan asupan Vitamin C, E, dan asam lemak Omega-3. Selain itu, latihan pernapasan diafragma di dalam ruangan berudara bersih dapat memperkuat diafragma tanpa membebani paru-paru."
+            }
         ];
 
-        // --- Chart Instances ---
+        // Global State variables
+        let currentStandard = 'EPA'; // EPA or WHO
+        let selectedCountry = 'Indonesia';
+        let selectedProvince = 'Jawa Timur';
+        let selectedCity = 'Malang';
+        let currentLandscape = 'mountain'; // urban, rural, mountain
+        
+        let customStatsData = [
+            { id: 1, time: '06:00 WIB', val: 45, type: 'AQI' },
+            { id: 2, time: '09:00 WIB', val: 82, type: 'AQI' },
+            { id: 3, time: '12:00 WIB', val: 115, type: 'AQI' },
+            { id: 4, time: '15:00 WIB', val: 95, type: 'AQI' }
+        ];
+
+        let calcHistory = JSON.parse(localStorage.getItem('airguard_calc_history')) || [
+            { date: 'Hari Ini, 10:15', aqi: 101, primary: 'PM2.5' }
+        ];
+
+        // Chart instances
+        let aqiGaugeChartInstance = null;
         let forecastChartInstance = null;
         let customChartInstance = null;
 
-        // --- Utility Functions ---
-        const getCategory = (aqi) => aqiCategories.find(c => aqi <= c.max) || aqiCategories[aqiCategories.length - 1];
-        
-        const showNotification = (msg, type='info') => {
-            const container = document.getElementById('notification-area');
-            const el = document.createElement('div');
-            const colors = type === 'error' ? 'bg-red-900/90 border-red-500' : 'bg-slate-800/90 border-slate-600';
-            el.className = `p-3 rounded-lg border shadow-lg text-sm text-white transform transition-all duration-300 translate-y-10 opacity-0 ${colors}`;
-            el.innerText = msg;
-            container.appendChild(el);
-            
-            setTimeout(() => {
-                el.classList.remove('translate-y-10', 'opacity-0');
-            }, 10);
-
-            setTimeout(() => {
-                el.classList.add('translate-y-10', 'opacity-0');
-                setTimeout(() => el.remove(), 300);
-            }, 3000);
+        /* -------------------------------------------------------------
+           INITIALIZATION & EVENT LISTENERS
+        ------------------------------------------------------------- */
+        window.onload = function() {
+            startClock();
+            initCascadeDropdowns();
+            renderAll();
+            renderNews(newsDatabase);
         };
 
-        // --- Core Update Logic ---
-        function updateDashboard() {
-            const cat = getCategory(state.aqi);
-            
-            // 1. Update Ring & Numbers
-            const aqiValEl = document.getElementById('aqi-value');
-            const aqiLabelEl = document.getElementById('aqi-label');
-            const ringEl = document.getElementById('aqi-ring');
-            
-            // Animate number
-            animateValue(aqiValEl, parseInt(aqiValEl.innerText) || 0, state.aqi, 1000);
-            
-            aqiLabelEl.innerText = cat.label;
-            aqiLabelEl.className = `text-sm font-semibold mt-1 px-3 py-1 rounded-full ${cat.bg} ${cat.text} border ${cat.border}`;
-            
-            ringEl.style.stroke = cat.color;
-            const circumference = 552.92;
-            const offset = circumference - (Math.min(state.aqi, 300) / 300) * circumference;
-            ringEl.style.strokeDashoffset = offset;
-
-            // 2. Pollutants & Equivalence (Mock logic: PM2.5 ~ AQI * 0.4)
-            const pm25 = (state.aqi * 0.4).toFixed(1);
-            document.getElementById('pm25-val').innerText = `${pm25} µg/m³`;
-            
-            // 1 cig ≈ 22 µg/m³
-            const cigs = Math.max(0, (pm25 / 22)).toFixed(1);
-            document.getElementById('cig-count').innerText = cigs;
-
-            // 3. Update Diorama
-            updateDiorama(cat);
-
-            // 4. Update Smart Text
-            updateAIAnalysis(cat, pm25);
-
-            // 5. Update Charts & Alerts
-            updateForecastChart();
-            updateGeoAlerts(cat);
-            updateCustomChart();
-        }
-
-        function animateValue(obj, start, end, duration) {
-            let startTimestamp = null;
-            const step = (timestamp) => {
-                if (!startTimestamp) startTimestamp = timestamp;
-                const progress = Math.min((timestamp - startTimestamp) / duration, 1);
-                obj.innerHTML = Math.floor(progress * (end - start) + start);
-                if (progress < 1) {
-                    window.requestAnimationFrame(step);
-                }
-            };
-            window.requestAnimationFrame(step);
-        }
-
-        function updateDiorama(cat) {
-            const box = document.getElementById('diorama');
-            const smog = document.getElementById('diorama-smog');
-            const layer = document.getElementById('diorama-layer');
-            const sun = document.getElementById('diorama-sun');
-
-            // Set Sky Color based on AQI
-            if (state.aqi <= 50) {
-                box.style.background = 'linear-gradient(to bottom, #38bdf8, #bae6fd)';
-                sun.style.background = '#FDE047';
-                sun.style.boxShadow = '0 0 20px #FDE047';
-            } else if (state.aqi <= 100) {
-                box.style.background = 'linear-gradient(to bottom, #94a3b8, #e2e8f0)';
-                sun.style.background = '#fef08a';
-                sun.style.boxShadow = '0 0 10px #fef08a';
-            } else if (state.aqi <= 150) {
-                box.style.background = 'linear-gradient(to bottom, #9ca3af, #fef08a)';
-                sun.style.background = '#f97316';
-                sun.style.boxShadow = '0 0 20px #f97316';
-            } else if (state.aqi <= 200) {
-                box.style.background = 'linear-gradient(to bottom, #64748b, #fca5a5)';
-                sun.style.background = '#ef4444';
-                sun.style.boxShadow = '0 0 30px #ef4444';
-            } else {
-                box.style.background = 'linear-gradient(to bottom, #334155, #9f1239)';
-                sun.style.background = '#be123c';
-                sun.style.boxShadow = '0 0 40px #be123c';
-            }
-
-            // Set Smog Opacity/Color
-            let smogColor = 'rgba(255,255,255,0)';
-            if (state.aqi > 50) smogColor = `rgba(150, 150, 140, ${(state.aqi-50)/300})`;
-            if (state.aqi > 150) smogColor = `rgba(139, 69, 19, ${(state.aqi)/400})`;
-            smog.style.backgroundColor = smogColor;
-
-            // Set Landscape SVG
-            const svgs = {
-                urban: `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath d='M0,100 L0,50 L10,50 L10,30 L20,30 L20,60 L30,60 L30,40 L40,40 L40,70 L50,70 L50,20 L60,20 L60,60 L70,60 L70,40 L80,40 L80,80 L90,80 L90,50 L100,50 L100,100 Z' fill='%231e293b'/%3E%3C/svg%3E`,
-                rural: `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath d='M0,100 L0,80 Q25,60 50,80 T100,70 L100,100 Z' fill='%231e293b'/%3E%3Ccircle cx='30' cy='60' r='15' fill='%231e293b'/%3E%3Ccircle cx='70' cy='65' r='10' fill='%231e293b'/%3E%3C/svg%3E`,
-                mountain: `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath d='M0,100 L30,30 L50,60 L75,20 L100,80 L100,100 Z' fill='%231e293b'/%3E%3C/svg%3E`
-            };
-            layer.style.backgroundImage = `url("${svgs[state.landscape]}")`;
-        }
-
-        function updateAIAnalysis(cat, pm25) {
-            const summaryEl = document.getElementById('ai-summary');
-            const activityEl = document.getElementById('ai-activity');
-
-            const summaries = [
-                "Air quality is optimal. Perfect day for outdoor activities and natural ventilation.",
-                "Air quality is acceptable; however, sensitive groups may experience minor symptoms.",
-                "Members of sensitive groups may experience health effects. General public is not likely to be affected.",
-                "Everyone may begin to experience health effects; sensitive groups may experience more serious effects.",
-                "Health alert: everyone may experience more serious health effects. Air is highly polluted.",
-                "Health warnings of emergency conditions. The entire population is more likely to be affected."
-            ];
-
-            const activities = [
-                "Open windows to bring in fresh, clean air. Great day for intense outdoor sports.",
-                "Outdoor activities are fine for most people. Sensitive individuals should monitor symptoms.",
-                "Reduce prolonged or heavy outdoor exertion. Consider moving intense workouts indoors.",
-                "Wear an N95 mask if going outside. Avoid heavy outdoor activities to protect lung health.",
-                "Stay indoors and keep windows closed. Run an air purifier with a HEPA filter if available.",
-                "Strictly stay indoors. Avoid any physical exertion outside. This level is extremely hazardous to lung tissue."
-            ];
-
-            let index = aqiCategories.indexOf(cat);
-            if(index === -1) index = 0;
-
-            summaryEl.innerText = summaries[index];
-            
-            let icon = '<i class="fa-solid fa-person-running text-green-400 mt-1"></i>';
-            if (state.aqi > 100) icon = '<i class="fa-solid fa-mask text-orange-400 mt-1"></i>';
-            if (state.aqi > 200) icon = '<i class="fa-solid fa-house-chimney text-red-400 mt-1"></i>';
-            
-            activityEl.innerHTML = `${icon} <span>${activities[index]}</span>`;
-        }
-
-        function updateGeoAlerts(cat) {
-            const container = document.getElementById('geo-alerts');
-            container.innerHTML = ''; // clear
-
-            if (state.aqi <= 50) {
-                container.innerHTML = `<div class="p-3 rounded-lg bg-emerald-900/30 border border-emerald-500/20 text-sm text-emerald-300 flex items-center gap-2"><i class="fa-solid fa-check-circle"></i> No active alerts in ${state.city}.</div>`;
-                return;
-            }
-
-            const alerts = [
-                { area: `${state.city} City Center`, issue: 'High Traffic Emissions', sev: state.aqi > 150 ? 'high' : 'medium' },
-                { area: `Industrial Zone East`, issue: 'Factory Exhaust Spike', sev: state.aqi > 200 ? 'high' : (state.aqi > 100 ? 'medium' : 'low') }
-            ];
-
-            alerts.forEach(a => {
-                if(a.sev === 'low' && state.aqi > 100) return; // skip low if bad
-                let colorClass = a.sev === 'high' ? 'bg-red-900/40 border-red-500/30 text-red-300' : 'bg-orange-900/40 border-orange-500/30 text-orange-300';
-                let iconClass = a.sev === 'high' ? 'text-red-400' : 'text-orange-400';
-                
-                container.innerHTML += `
-                    <div class="p-3 rounded-lg border ${colorClass} text-sm flex flex-col gap-1">
-                        <div class="flex items-center justify-between">
-                            <span class="font-semibold"><i class="fa-solid fa-triangle-exclamation ${iconClass} mr-1"></i> ${a.area}</span>
-                            <span class="text-xs px-2 py-0.5 rounded bg-black/30 capitalize">${a.sev} Priority</span>
-                        </div>
-                        <span class="opacity-80 ml-5 text-xs">Cause: ${a.issue}</span>
-                    </div>
-                `;
-            });
-        }
-
-        // --- Chart.js Implementations ---
-        function updateForecastChart() {
-            const ctx = document.getElementById('forecastChart').getContext('2d');
-            
-            // Generate pseudo-random data around current AQI
-            const labels = ['Day 1', 'Day 2', 'Day 3', 'Day 4', 'Day 5', 'Day 6', 'Day 7'];
-            const data = labels.map(() => Math.max(0, Math.floor(state.aqi + (Math.random() * 60 - 30))));
-
-            if (forecastChartInstance) {
-                forecastChartInstance.data.datasets[0].data = data;
-                forecastChartInstance.update();
-            } else {
-                Chart.defaults.color = '#94a3b8';
-                Chart.defaults.font.family = 'Inter';
-                
-                forecastChartInstance = new Chart(ctx, {
-                    type: 'line',
-                    data: {
-                        labels: labels,
-                        datasets: [{
-                            label: 'Predicted AQI',
-                            data: data,
-                            borderColor: '#38bdf8',
-                            backgroundColor: 'rgba(56, 189, 248, 0.1)',
-                            borderWidth: 2,
-                            fill: true,
-                            tension: 0.4,
-                            pointRadius: 3,
-                            pointBackgroundColor: '#38bdf8'
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: { legend: { display: false } },
-                        scales: {
-                            y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.05)' } },
-                            x: { grid: { display: false } }
-                        }
-                    }
-                });
-            }
-        }
-
-        function updateCustomChart() {
-            const ctx = document.getElementById('customChart').getContext('2d');
-            const limit = thresholds[state.standard].max_good; // Standard good limit
-
-            const labels = state.customStats.map(d => d.label);
-            const data = state.customStats.map(d => d.value);
-            const pointColors = data.map(v => v > limit ? '#ef4444' : '#10b981'); // Red if over limit
-
-            if (customChartInstance) {
-                customChartInstance.data.labels = labels;
-                customChartInstance.data.datasets[0].data = data;
-                customChartInstance.data.datasets[0].pointBackgroundColor = pointColors;
-                customChartInstance.options.plugins.annotation = getCustomChartLimitLine(limit);
-                customChartInstance.update();
-            } else {
-                customChartInstance = new Chart(ctx, {
-                    type: 'bar',
-                    data: {
-                        labels: labels,
-                        datasets: [{
-                            label: 'Custom AQI',
-                            data: data,
-                            backgroundColor: pointColors.map(c => c === '#ef4444' ? 'rgba(239, 68, 68, 0.7)' : 'rgba(16, 185, 129, 0.7)'),
-                            borderColor: pointColors,
-                            borderWidth: 1,
-                            borderRadius: 4
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: { legend: { display: false } },
-                        scales: {
-                            y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.05)' } },
-                            x: { grid: { display: false } }
-                        }
-                    }
-                });
-            }
-
-            renderCustomList();
-            analyzeCustomTrend(data, limit);
-        }
-
-        function getCustomChartLimitLine(limit) {
-            // Note: Chart.js annotation plugin not included via CDN by default in this minimal setup, 
-            // so we rely on coloring the bars. This function is a placeholder for standard limit logic.
-            return {};
-        }
-
-        function renderCustomList() {
-            const list = document.getElementById('cs-list');
-            list.innerHTML = '';
-            
-            if(state.customStats.length === 0) {
-                list.innerHTML = '<li class="text-gray-500 text-center text-xs py-2 italic">No data points added.</li>';
-                return;
-            }
-
-            state.customStats.forEach((item, idx) => {
-                const li = document.createElement('li');
-                li.className = "flex justify-between items-center bg-gray-900/40 px-3 py-1.5 rounded-lg border border-white/5";
-                li.innerHTML = `
-                    <span>${item.label} <span class="text-xs text-gray-500 ml-2">Value: ${item.value}</span></span>
-                    <button class="text-red-400 hover:text-red-300 transition-colors delete-cs" data-idx="${idx}"><i class="fa-solid fa-trash-can text-xs"></i></button>
-                `;
-                list.appendChild(li);
-            });
-
-            document.querySelectorAll('.delete-cs').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    const idx = parseInt(e.currentTarget.getAttribute('data-idx'));
-                    state.customStats.splice(idx, 1);
-                    updateCustomChart();
-                    showNotification('Data point removed.');
-                });
-            });
-        }
-
-        function analyzeCustomTrend(data, limit) {
-            const el = document.getElementById('cs-analysis');
-            if (data.length < 2) {
-                el.innerText = "Add more data points to see trend analysis.";
-                return;
-            }
-
-            const first = data[0];
-            const last = data[data.length - 1];
-            const avg = data.reduce((a, b) => a + b, 0) / data.length;
-            const overLimitCount = data.filter(v => v > limit).length;
-
-            let trend = "stable";
-            if (last > first * 1.1) trend = "worsening";
-            if (last < first * 0.9) trend = "improving";
-
-            let text = `Trend is generally <span class="font-semibold text-white">${trend}</span>. Average value is ${avg.toFixed(1)}. `;
-            
-            if (overLimitCount > 0) {
-                text += `<br><span class="text-red-300 text-xs">${overLimitCount} out of ${data.length} recorded points exceed the ${state.standard} safe limit (${limit}).</span>`;
-            } else {
-                text += `<br><span class="text-emerald-300 text-xs">All recorded points are within safe limits.</span>`;
-            }
-
-            el.innerHTML = text;
-        }
-
-
-        // --- Event Listeners & Initialization ---
-        document.addEventListener('DOMContentLoaded', () => {
-            
-            // Initial render
-            updateDashboard();
-
-            // Time clock
+        function startClock() {
             setInterval(() => {
-                const now = new Date();
-                document.getElementById('live-time').innerText = now.toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute:'2-digit' });
+                const d = new Date();
+                document.getElementById('live-clock').innerText = d.toLocaleTimeString('id-ID') + ' WIB';
             }, 1000);
+        }
 
-            // Location Change
-            document.getElementById('sel-city').addEventListener('change', (e) => {
-                const selectedOpt = e.target.options[e.target.selectedIndex];
-                state.city = selectedOpt.value;
-                state.aqi = parseInt(selectedOpt.getAttribute('data-aqi'));
-                updateDashboard();
-                showNotification(`Location changed to ${state.city}.`);
+        /* -------------------------------------------------------------
+           CASCADE DROPDOWNS & REGION LOGIC
+        ------------------------------------------------------------- */
+        function initCascadeDropdowns() {
+            const countrySel = document.getElementById('select-country');
+            countrySel.value = selectedCountry;
+            populateProvinces();
+        }
+
+        function populateProvinces() {
+            const provSel = document.getElementById('select-province');
+            provSel.innerHTML = '';
+            const provinces = Object.keys(regionDatabase[selectedCountry] || {});
+            provinces.forEach(p => {
+                const opt = document.createElement('option');
+                opt.value = p;
+                opt.innerText = p;
+                provSel.appendChild(opt);
             });
+            if (provinces.length > 0) {
+                selectedProvince = provinces.includes(selectedProvince) ? selectedProvince : provinces[0];
+                provSel.value = selectedProvince;
+            }
+            populateCities();
+        }
 
-            // Standard Toggle
-            const btnWho = document.getElementById('btn-who');
-            const btnEpa = document.getElementById('btn-epa');
+        function populateCities() {
+            const citySel = document.getElementById('select-city');
+            citySel.innerHTML = '';
+            const cities = Object.keys(regionDatabase[selectedCountry]?.[selectedProvince] || {});
+            cities.forEach(c => {
+                const opt = document.createElement('option');
+                opt.value = c;
+                opt.innerText = c;
+                citySel.appendChild(opt);
+            });
+            if (cities.length > 0) {
+                selectedCity = cities.includes(selectedCity) ? selectedCity : cities[0];
+                citySel.value = selectedCity;
+            }
+        }
+
+        function onCountryChange() {
+            selectedCountry = document.getElementById('select-country').value;
+            populateProvinces();
+            onCityChange();
+        }
+
+        function onProvinceChange() {
+            selectedProvince = document.getElementById('select-province').value;
+            populateCities();
+            onCityChange();
+        }
+
+        function onCityChange() {
+            selectedCity = document.getElementById('select-city').value;
+            renderAll();
+        }
+
+        function setStandard(std) {
+            currentStandard = std;
+            document.getElementById('std-epa').className = std === 'EPA' ? 
+                'px-3 py-1.5 text-xs font-semibold rounded-lg transition-all duration-200 bg-cyan-600 text-white shadow-md' : 
+                'px-3 py-1.5 text-xs font-semibold rounded-lg transition-all duration-200 text-slate-400 hover:text-white';
+            document.getElementById('std-who').className = std === 'WHO' ? 
+                'px-3 py-1.5 text-xs font-semibold rounded-lg transition-all duration-200 bg-cyan-600 text-white shadow-md' : 
+                'px-3 py-1.5 text-xs font-semibold rounded-lg transition-all duration-200 text-slate-400 hover:text-white';
             
-            const setActiveTab = (activeBtn, inactiveBtn, std) => {
-                state.standard = std;
-                activeBtn.className = 'px-3 py-1 rounded-md bg-blue-500/20 text-blue-400 transition-colors';
-                inactiveBtn.className = 'px-3 py-1 rounded-md text-gray-400 hover:text-gray-200 transition-colors';
-                updateCustomChart(); // Re-evaluate limits
-                showNotification(`Measurement standard switched to ${std}.`);
-            };
+            renderAll();
+        }
 
-            btnWho.addEventListener('click', () => setActiveTab(btnWho, btnEpa, 'WHO'));
-            btnEpa.addEventListener('click', () => setActiveTab(btnEpa, btnWho, 'EPA'));
+        /* -------------------------------------------------------------
+           CORE RENDER ENGINE
+        ------------------------------------------------------------- */
+        function getActiveData() {
+            return regionDatabase[selectedCountry]?.[selectedProvince]?.[selectedCity] || regionDatabase["Indonesia"]["Jawa Timur"]["Malang"];
+        }
 
-            // Diorama Toggle
-            document.querySelectorAll('.diorama-btn').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    document.querySelectorAll('.diorama-btn').forEach(b => {
-                        b.className = 'diorama-btn px-2 py-1 rounded text-gray-400 hover:text-white';
-                    });
-                    const target = e.currentTarget;
-                    target.className = 'diorama-btn active px-2 py-1 rounded text-white bg-white/10';
-                    state.landscape = target.getAttribute('data-type');
-                    updateDiorama(getCategory(state.aqi));
-                });
-            });
+        function renderAll() {
+            const data = getActiveData();
 
-            // Calculator
-            document.getElementById('btn-calc').addEventListener('click', () => {
-                const pm25 = parseFloat(document.getElementById('calc-pm25').value);
-                const pm10 = parseFloat(document.getElementById('calc-pm10').value);
-                
-                if(isNaN(pm25) && isNaN(pm10)) {
-                    showNotification('Please enter at least one pollutant value.', 'error');
-                    return;
+            // 1. Update Labels & Globe
+            document.getElementById('globe-location-label').innerText = `${selectedCity}, ${selectedProvince}`;
+            document.getElementById('globe-coords').innerText = `${data.lat}, ${data.long}`;
+            document.getElementById('aqi-location-heading').innerText = `${selectedCity}, ${selectedProvince}`;
+
+            // 2. Pollutant values
+            document.getElementById('val-pm25').innerText = data.pm25;
+            document.getElementById('val-pm10').innerText = data.pm10;
+            document.getElementById('val-o3').innerText = data.o3;
+            document.getElementById('val-no2').innerText = data.no2;
+            document.getElementById('val-so2').innerText = data.so2;
+            document.getElementById('val-co').innerText = data.co;
+
+            document.getElementById('val-temp').innerText = data.temp + '°C';
+            document.getElementById('val-humidity').innerText = data.humidity + '%';
+            document.getElementById('val-wind').innerText = data.wind + ' km/h';
+
+            // 3. AQI Evaluation & Status Badges
+            let evalRes = evaluateAQI(data.aqi, data.pm25);
+            
+            document.getElementById('aqi-value-text').innerText = data.aqi;
+            document.getElementById('aqi-value-text').className = `text-5xl font-black tracking-tight ${evalRes.textColor}`;
+
+            const badgeElem = document.getElementById('aqi-level-badge');
+            badgeElem.innerText = evalRes.label;
+            badgeElem.className = `px-3 py-1 rounded-full text-xs font-bold ${evalRes.bgColor} ${evalRes.textColor} border ${evalRes.borderColor}`;
+
+            const qBadgeText = document.getElementById('quick-badge-text');
+            qBadgeText.innerText = `${evalRes.label} (AQI ${data.aqi})`;
+            document.getElementById('quick-badge').className = `px-3.5 py-1.5 rounded-xl text-xs font-bold border ${evalRes.bgColor} ${evalRes.borderColor} ${evalRes.textColor} flex items-center gap-2`;
+
+            const mainCard = document.getElementById('aqi-main-card');
+            mainCard.className = `lg:col-span-5 glass-panel rounded-2xl p-6 flex flex-col justify-between relative ${evalRes.glowClass} ${evalRes.borderColor}`;
+
+            // 4. Cigarette Equivalence Calculation
+            // Rule of thumb: 1 cigarette per day is roughly equivalent to a PM2.5 level of 22 µg/m³
+            const cigs = (data.pm25 / 22).toFixed(1);
+            document.getElementById('cette-text').innerHTML = `PM2.5 saat ini (${data.pm25} µg/m³) setara menghirup <span class="${evalRes.textColor} font-bold">~${cigs} batang rokok</span> / hari!`;
+
+            // 5. Update Gauges & Forecast Charts
+            renderAQIGauge(data.aqi, evalRes.hexColor);
+            renderForecastChart(data.aqi);
+
+            // 6. Update Landscape & AI Recs
+            if (data.landscape) setLandscape(data.landscape, false);
+            updateLandscapeVisuals(data.aqi);
+            updateAIRecommendations(evalRes.statusKey);
+            updateCustomStatsChart();
+            renderCalcHistory();
+        }
+
+        function evaluateAQI(aqi, pm25) {
+            // Evaluates based on selected standard
+            if (currentStandard === 'WHO') {
+                if (pm25 <= 15) {
+                    return { label: 'Baik (WHO)', textColor: 'text-emerald-400', bgColor: 'bg-emerald-500/20', borderColor: 'border-emerald-500/30', glowClass: 'glow-good', hexColor: '#10b981', statusKey: 'good' };
+                } else if (pm25 <= 35) {
+                    return { label: 'Sedang (WHO Strict)', textColor: 'text-amber-400', bgColor: 'bg-amber-500/20', borderColor: 'border-amber-500/30', glowClass: 'glow-mod', hexColor: '#f59e0b', statusKey: 'moderate' };
+                } else {
+                    return { label: 'Tinggi (Batas WHO)', textColor: 'text-red-400', bgColor: 'bg-red-500/20', borderColor: 'border-red-500/30', glowClass: 'glow-bad', hexColor: '#ef4444', statusKey: 'unhealthy' };
                 }
-
-                // Simplified mock calculation for demonstration (Normally complex piecewise function)
-                let calculatedAqi = 0;
-                if(!isNaN(pm25)) calculatedAqi = Math.max(calculatedAqi, pm25 * 3.5); // Mock multiplier
-                if(!isNaN(pm10)) calculatedAqi = Math.max(calculatedAqi, pm10 * 1.5);
-                
-                calculatedAqi = Math.round(calculatedAqi);
-
-                const resDiv = document.getElementById('calc-result');
-                const valEl = document.getElementById('calc-aqi-val');
-                resDiv.classList.remove('hidden');
-                
-                // Animate calculation result
-                animateValue(valEl, 0, calculatedAqi, 800);
-
-                // Add to history
-                const now = new Date();
-                const timeStr = `${now.getHours()}:${now.getMinutes().toString().padStart(2, '0')}`;
-                state.calcHistory.unshift(`[${timeStr}] PM2.5: ${pm25||'-'}, PM10: ${pm10||'-'} ➔ AQI: <b>${calculatedAqi}</b>`);
-                if(state.calcHistory.length > 5) state.calcHistory.pop();
-
-                const historyList = document.getElementById('calc-history');
-                historyList.innerHTML = state.calcHistory.map(h => `<li class="border-b border-white/5 pb-1">${h}</li>`).join('');
-            });
-
-            // Custom Stats Add
-            document.getElementById('btn-add-cs').addEventListener('click', () => {
-                const label = document.getElementById('cs-label').value.trim();
-                const val = parseFloat(document.getElementById('cs-val').value);
-
-                if(!label || isNaN(val)) {
-                    showNotification('Please provide a valid label and value.', 'error');
-                    return;
+            } else {
+                // EPA Standard
+                if (aqi <= 50) {
+                    return { label: 'Sangat Baik', textColor: 'text-emerald-400', bgColor: 'bg-emerald-500/20', borderColor: 'border-emerald-500/30', glowClass: 'glow-good', hexColor: '#10b981', statusKey: 'good' };
+                } else if (aqi <= 100) {
+                    return { label: 'Sedang', textColor: 'text-amber-400', bgColor: 'bg-amber-500/20', borderColor: 'border-amber-500/30', glowClass: 'glow-mod', hexColor: '#f59e0b', statusKey: 'moderate' };
+                } else if (aqi <= 150) {
+                    return { label: 'Tidak Sehat (K. Sensitif)', textColor: 'text-orange-400', bgColor: 'bg-orange-500/20', borderColor: 'border-orange-500/30', glowClass: 'glow-mod', hexColor: '#f97316', statusKey: 'unhealthy' };
+                } else {
+                    return { label: 'Sangat Tidak Sehat', textColor: 'text-red-400', bgColor: 'bg-red-500/20', borderColor: 'border-red-500/30', glowClass: 'glow-bad', hexColor: '#ef4444', statusKey: 'hazardous' };
                 }
+            }
+        }
 
-                state.customStats.push({ label, value: val });
-                document.getElementById('cs-label').value = '';
-                document.getElementById('cs-val').value = '';
+        /* -------------------------------------------------------------
+           FEATURE 2: DYNAMIC LANDSCAPE DIORAMA
+        ------------------------------------------------------------- */
+        function setLandscape(type, shouldRender = true) {
+            currentLandscape = type;
+            ['urban', 'rural', 'mountain'].forEach(t => {
+                const btn = document.getElementById(`btn-ls-${t}`);
+                if (t === type) {
+                    btn.className = 'px-3 py-1 rounded-lg transition-all font-medium bg-slate-800 text-cyan-400 border border-slate-700';
+                } else {
+                    btn.className = 'px-3 py-1 rounded-lg transition-all font-medium text-slate-400 hover:text-white';
+                }
+            });
+
+            const svgContainer = document.getElementById('landscape-svg-container');
+            if (type === 'urban') {
+                svgContainer.innerHTML = `
+                    <svg class="w-full h-36 transition-all duration-500" viewBox="0 0 500 150" fill="none">
+                        <path d="M0,150 L0,110 L20,110 L20,150 L40,150 L40,80 L70,80 L70,150 L90,150 L90,60 L120,60 L120,150 L150,150 L150,95 L180,95 L180,150 L210,150 L210,40 L250,40 L250,150 L290,150 L290,75 L320,75 L320,150 L360,150 L360,90 L400,90 L400,150 L440,150 L440,50 L480,50 L480,150 Z" fill="#1e293b" opacity="0.9"/>
+                    </svg>`;
+            } else if (type === 'rural') {
+                svgContainer.innerHTML = `
+                    <svg class="w-full h-36 transition-all duration-500" viewBox="0 0 500 150" fill="none">
+                        <path d="M0,150 C100,120 200,140 300,125 C400,110 450,135 500,150 Z" fill="#14532d" opacity="0.9"/>
+                        <circle cx="120" cy="115" r="15" fill="#166534"/>
+                        <circle cx="280" cy="110" r="20" fill="#166534"/>
+                        <path d="M200,150 L210,120 L225,120 L235,150 Z" fill="#334155"/>
+                    </svg>`;
+            } else if (type === 'mountain') {
+                svgContainer.innerHTML = `
+                    <svg class="w-full h-36 transition-all duration-500" viewBox="0 0 500 150" fill="none">
+                        <path d="M0,150 L70,70 L140,150 L220,50 L310,150 L400,60 L500,150 Z" fill="#0f172a" opacity="0.9"/>
+                        <path d="M220,50 L200,75 L240,75 Z" fill="#f8fafc" opacity="0.8"/>
+                        <path d="M400,60 L385,80 L415,80 Z" fill="#f8fafc" opacity="0.8"/>
+                    </svg>`;
+            }
+
+            if (shouldRender) updateLandscapeVisuals(getActiveData().aqi);
+        }
+
+        function updateLandscapeVisuals(aqi) {
+            const bgContainer = document.getElementById('landscape-canvas-bg');
+            const sun = document.getElementById('landscape-sun');
+            const smog = document.getElementById('smog-layer');
+            const statusTitle = document.getElementById('diorama-status-title');
+            const statusDesc = document.getElementById('diorama-status-desc');
+            const statusIcon = document.getElementById('diorama-status-icon');
+            const visKm = document.getElementById('visibility-km');
+
+            if (aqi <= 50) {
+                // Clear Blue Sky
+                bgContainer.style.background = 'linear-gradient(to bottom, #0284c7, #0f172a)';
+                sun.style.background = '#fbbf24';
+                sun.style.boxShadow = '0 0 60px rgba(251, 191, 36, 0.9)';
+                smog.style.opacity = '0.1';
+                statusIcon.innerText = '☀️';
+                statusTitle.innerText = 'Langit Cerah & Udara Segar';
+                statusDesc.innerText = 'Jarak pandang sangat jernih. Lanskap terlihat sempurna.';
+                visKm.innerText = '> 10 km';
+            } else if (aqi <= 100) {
+                // Hazy / Sunlit
+                bgContainer.style.background = 'linear-gradient(to bottom, #d97706, #0f172a)';
+                sun.style.background = '#f59e0b';
+                sun.style.boxShadow = '0 0 40px rgba(245, 158, 11, 0.6)';
+                smog.style.opacity = '0.45';
+                statusIcon.innerText = '🌤️';
+                statusTitle.innerText = 'Kabut Tipis Perkotaan';
+                statusDesc.innerText = 'Terlihat lapisan smos tipis di horizon lanskap.';
+                visKm.innerText = '6.5 km';
+            } else {
+                // Heavy Polluted Dark Grayish Purple Sky
+                bgContainer.style.background = 'linear-gradient(to bottom, #4c1d95, #0f172a)';
+                sun.style.background = '#ef4444';
+                sun.style.boxShadow = '0 0 20px rgba(239, 68, 68, 0.4)';
+                smog.style.opacity = '0.85';
+                statusIcon.innerText = '😷';
+                statusTitle.innerText = 'Ketebalan Smog Pekat';
+                statusDesc.innerText = 'Partikel polutan tebal menutupi pemandangan lanskap.';
+                visKm.innerText = '< 3.0 km';
+            }
+        }
+
+        /* -------------------------------------------------------------
+           CHART.JS IMPLEMENTATIONS (Gauges, Forecast, Custom Builder)
+        ------------------------------------------------------------- */
+        function renderAQIGauge(aqi, colorHex) {
+            const ctx = document.getElementById('aqiGaugeChart').getContext('2d');
+            if (aqiGaugeChartInstance) aqiGaugeChartInstance.destroy();
+
+            aqiGaugeChartInstance = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    datasets: [{
+                        data: [aqi, Math.max(0, 300 - aqi)],
+                        backgroundColor: [colorHex, 'rgba(255, 255, 255, 0.05)'],
+                        borderWidth: 0,
+                        circumference: 240,
+                        rotation: 240,
+                        borderRadius: 8
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '82%',
+                    plugins: { tooltip: { enabled: false }, legend: { display: false } }
+                }
+            });
+        }
+
+        function renderForecastChart(baseAQI) {
+            const ctx = document.getElementById('forecastChart').getContext('2d');
+            if (forecastChartInstance) forecastChartInstance.destroy();
+
+            // Generate mock trend relative to active AQI
+            const labels = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'];
+            const dataVals = [
+                baseAQI - 12,
+                baseAQI - 5,
+                baseAQI,
+                baseAQI + 15,
+                baseAQI + 8,
+                baseAQI - 10,
+                baseAQI - 18
+            ];
+
+            forecastChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Estimasi AQI',
+                        data: dataVals,
+                        borderColor: '#06b6d4',
+                        backgroundColor: 'rgba(6, 182, 212, 0.12)',
+                        fill: true,
+                        tension: 0.4,
+                        pointBackgroundColor: '#06b6d4',
+                        pointRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { grid: { display: false }, ticks: { color: '#94a3b8', font: { size: 10 } } },
+                        y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8', font: { size: 10 } } }
+                    }
+                }
+            });
+        }
+
+        /* -------------------------------------------------------------
+           FEATURE 7: CUSTOM STATS BUILDER & AUTO-COLORING
+        ------------------------------------------------------------- */
+        function addCustomStat(e) {
+            e.preventDefault();
+            const time = document.getElementById('cust-time').value.trim();
+            const val = parseFloat(document.getElementById('cust-val').value);
+            const type = document.getElementById('cust-type').value;
+
+            if (!time || isNaN(val)) return;
+
+            customStatsData.push({
+                id: Date.now(),
+                time: time,
+                val: val,
+                type: type
+            });
+
+            document.getElementById('cust-time').value = '';
+            document.getElementById('cust-val').value = '';
+
+            updateCustomStatsChart();
+            showToast('Data kustom berhasil ditambahkan!', 'success');
+        }
+
+        function deleteCustomStat(id) {
+            customStatsData = customStatsData.filter(d => d.id !== id);
+            updateCustomStatsChart();
+            showToast('Data telah dihapus.', 'info');
+        }
+
+        function clearCustomStats() {
+            customStatsData = [];
+            updateCustomStatsChart();
+            showToast('Semua data kustom dibersihkan.', 'warning');
+        }
+
+        function updateCustomStatsChart() {
+            // Render Table
+            const tbody = document.getElementById('custom-table-body');
+            tbody.innerHTML = '';
+
+            customStatsData.forEach(item => {
+                let safeLimit = item.type === 'AQI' ? 100 : (item.type === 'PM2.5' ? 35.5 : 150);
+                let isDangerous = item.val > safeLimit;
                 
-                updateCustomChart();
-                showNotification('Data point added successfully.');
+                const tr = document.createElement('tr');
+                tr.className = 'border-b border-slate-800/60 hover:bg-slate-900/40';
+                tr.innerHTML = `
+                    <td class="p-2 text-slate-300 font-medium">${item.time}</td>
+                    <td class="p-2 font-bold ${isDangerous ? 'text-red-400' : 'text-emerald-400'}">${item.val} ${item.type}</td>
+                    <td class="p-2">
+                        <span class="px-2 py-0.5 rounded text-[10px] font-bold ${isDangerous ? 'bg-red-500/20 text-red-400' : 'bg-emerald-500/20 text-emerald-400'}">
+                            ${isDangerous ? 'Melebihi Batas' : 'Aman'}
+                        </span>
+                    </td>
+                    <td class="p-2 text-right">
+                        <button onclick="deleteCustomStat(${item.id})" class="text-slate-500 hover:text-red-400 transition">
+                            <i class="fa-solid fa-xmark"></i>
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
             });
 
-            // Info Modal
-            const modal = document.getElementById('modal-info');
-            document.getElementById('info-btn').addEventListener('click', () => {
-                modal.classList.remove('hidden');
+            // Auto-coloring logic for Chart Points
+            const labels = customStatsData.map(d => d.time);
+            const values = customStatsData.map(d => d.val);
+            const pointColors = customStatsData.map(d => {
+                let safeLimit = d.type === 'AQI' ? 100 : (d.type === 'PM2.5' ? 35.5 : 150);
+                return d.val > safeLimit ? '#ef4444' : '#10b981'; // Red if unsafe, Green if safe
             });
-            document.getElementById('close-modal').addEventListener('click', () => {
-                modal.classList.add('hidden');
+
+            const ctx = document.getElementById('customStatsChart').getContext('2d');
+            if (customChartInstance) customChartInstance.destroy();
+
+            customChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Pengamatan Kustom',
+                        data: values,
+                        borderColor: '#38bdf8',
+                        segment: {
+                            borderColor: ctx => {
+                                const val = ctx.p1.parsed.y;
+                                return val > 100 ? '#ef4444' : '#10b981';
+                            }
+                        },
+                        pointBackgroundColor: pointColors,
+                        pointBorderColor: pointColors,
+                        pointRadius: 6,
+                        tension: 0.3
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8', font: { size: 10 } } },
+                        y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8', font: { size: 10 } } }
+                    }
+                }
             });
-            modal.addEventListener('click', (e) => {
-                if(e.target === modal) modal.classList.add('hidden');
+
+            // Perform AI-powered Trend Analysis over ENTIRE dataset
+            const aiText = document.getElementById('custom-ai-analysis-text');
+            if (customStatsData.length === 0) {
+                aiText.innerText = "Belum ada data kustom yang diinputkan.";
+                return;
+            }
+
+            const avg = (values.reduce((a, b) => a + b, 0) / values.length).toFixed(1);
+            const maxVal = Math.max(...values);
+            const unsafeCount = customStatsData.filter(d => {
+                let safeLimit = d.type === 'AQI' ? 100 : (d.type === 'PM2.5' ? 35.5 : 150);
+                return d.val > safeLimit;
+            }).length;
+
+            aiText.innerHTML = `
+                Dari total <b>${customStatsData.length} sampel</b> yang diinput: Rata-rata bernilai <span class="text-cyan-400 font-bold">${avg}</span> dengan puncak tertinggi <span class="text-amber-400 font-bold">${maxVal}</span>.
+                Terdapat <b>${unsafeCount} titik pengamatan</b> yang melampaui ambang batas aman. 
+                ${unsafeCount > 0 ? 'Disarankan untuk mengurangi durasi paparan outdoor pada jam-jam puncak tersebut.' : 'Tren pengamatan menunjukkan kondisi lingkungan yang relatif terkendali.'}
+            `;
+        }
+
+        /* -------------------------------------------------------------
+           FEATURE 4: ADVANCED AQI CALCULATOR & BREAKPOINT LOGIC
+        ------------------------------------------------------------- */
+        function calculateManualAQI() {
+            const pm25 = parseFloat(document.getElementById('calc-pm25').value) || 0;
+            
+            // Simple Linear Breakpoint EPA for PM2.5
+            let calculatedAQI = 0;
+            if (pm25 <= 12.0) {
+                calculatedAQI = ((50 - 0) / (12.0 - 0)) * (pm25 - 0) + 0;
+            } else if (pm25 <= 35.4) {
+                calculatedAQI = ((100 - 51) / (35.4 - 12.1)) * (pm25 - 12.1) + 51;
+            } else if (pm25 <= 55.4) {
+                calculatedAQI = ((150 - 101) / (55.4 - 35.5)) * (pm25 - 35.5) + 101;
+            } else if (pm25 <= 150.4) {
+                calculatedAQI = ((200 - 151) / (150.4 - 55.5)) * (pm25 - 55.5) + 151;
+            } else {
+                calculatedAQI = 250;
+            }
+
+            calculatedAQI = Math.round(calculatedAQI);
+
+            document.getElementById('calc-result-display').innerHTML = `
+                Hasil: <span class="text-cyan-400 text-sm font-extrabold">AQI ${calculatedAQI}</span> (Sub-index PM2.5)
+            `;
+
+            // Save to History
+            const now = new Date();
+            const timeStr = `${now.getHours()}:${now.getMinutes().toString().padStart(2, '0')}`;
+            calcHistory.unshift({
+                date: `Hari ini, ${timeStr}`,
+                aqi: calculatedAQI,
+                primary: 'PM2.5'
             });
-        });
+
+            if (calcHistory.length > 5) calcHistory.pop();
+            localStorage.setItem('airguard_calc_history', JSON.stringify(calcHistory));
+            renderCalcHistory();
+            showToast('Kalkulasi berhasil disimpan ke riwayat!', 'success');
+        }
+
+        function renderCalcHistory() {
+            const container = document.getElementById('calc-history-container');
+            container.innerHTML = '';
+            calcHistory.forEach((item, index) => {
+                const div = document.createElement('div');
+                div.className = 'flex items-center justify-between text-xs bg-slate-950 p-2 rounded-lg border border-slate-800';
+                div.innerHTML = `
+                    <div>
+                        <span class="text-slate-400 text-[10px] block">${item.date}</span>
+                        <span class="font-bold text-slate-200">Hasil: AQI ${item.aqi}</span>
+                    </div>
+                    <span class="px-2 py-0.5 rounded text-[10px] bg-cyan-500/10 text-cyan-400 border border-cyan-500/30">
+                        ${item.primary}
+                    </span>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        function toggleFormulaModal() {
+            const modal = document.getElementById('formula-modal');
+            modal.classList.toggle('hidden');
+        }
+
+        /* -------------------------------------------------------------
+           FEATURE 6: AI RECOMMENDATIONS & SPORT ADVICE
+        ------------------------------------------------------------- */
+        function updateAIRecommendations(statusKey) {
+            const recMask = document.getElementById('rec-mask');
+            const recPurifier = document.getElementById('rec-purifier');
+            const recVulnerable = document.getElementById('rec-vulnerable');
+
+            const sportAdvice = document.getElementById('sport-advice');
+            const lungsAdvice = document.getElementById('lungs-advice');
+            const aiNarrative = document.getElementById('ai-nartive-summary');
+
+            if (statusKey === 'good') {
+                recMask.innerText = "Tidak memerlukan masker untuk aktivitas luar ruangan umum.";
+                recPurifier.innerText = "Buka jendela untuk sirkulasi udara alami yang sehat.";
+                recVulnerable.innerText = "Aman untuk semua kelompok usia melakukan aktivitas outdoor.";
+                sportAdvice.innerText = "Sangat disarankan Jogging atau bersepeda di area terbuka secara optimal.";
+                lungsAdvice.innerText = "Lakukan latihan pernapasan dalam (Diaphragmatic) untuk kesegaran paru-paru.";
+                aiNarrative.innerHTML = `Kualitas udara di <span class="font-bold text-cyan-400">${selectedCity}</span> berada dalam kondisi <span class="text-emerald-400 font-bold">Sangat Baik</span>. Konsentrasi polutan sangat minim. Tempat terbaik untuk rekreasi luar ruangan.`;
+            } else if (statusKey === 'moderate') {
+                recMask.innerText = "Masker medis disarankan jika berada di dekat jalan raya berdebu.";
+                recPurifier.innerText = "Gunakan Air Purifier di malam hari saat tidur.";
+                recVulnerable.innerText = "Anak-anak & penderita asma sebaiknya tidak terlalu lelah di luar.";
+                sportAdvice.innerText = "Aman untuk olahraga outdoor sedang (hingga 45 menit). Hindari jalan raya utama.";
+                lungsAdvice.innerText = "Tingkatkan konsumsi air putih hangat dan buah kaya Vitamin C.";
+                aiNarrative.innerHTML = `Kualitas udara di <span class="font-bold text-cyan-400">${selectedCity}</span> saat ini berada pada level <span class="text-amber-400 font-bold">Sedang</span>. Terjadi sedikit akumulasi partikel PM2.5 karena lalu lintas kendaraan.`;
+            } else {
+                recMask.innerText = "Wajib menggunakan masker respirator N95 saat beraktivitas di luar.";
+                recPurifier.innerText = "Tutup semua pintu & jendela. Nyalakan Air Purifier mode maksimal.";
+                recVulnerable.innerText = "Lansia & anak-anak harus tetap berada di dalam ruangan jernih.";
+                sportAdvice.innerText = "Sangat disarankan beralih ke Indoor Gym atau Olahraga di rumah.";
+                lungsAdvice.innerText = "Minum antioksidan (Vitamin C & E) dan lakukan uap hangat jika tenggorokan terasa gatal.";
+                aiNarrative.innerHTML = `Kualitas udara di <span class="font-bold text-cyan-400">${selectedCity}</span> berada pada tingkat <span class="text-red-400 font-bold">Tidak Sehat</span>. Partikel mikro PM2.5 tinggi dapat memicu iritasi pernapasan.`;
+            }
+        }
+
+        /* -------------------------------------------------------------
+           FEATURE 8: NEWS & ARTICLES SYSTEM
+        ------------------------------------------------------------- */
+        function renderNews(articles) {
+            const container = document.getElementById('news-grid-container');
+            container.innerHTML = '';
+            articles.forEach(art => {
+                const card = document.createElement('div');
+                card.className = 'glass-card rounded-xl p-4 border border-slate-800 flex flex-col justify-between hover:border-cyan-500/40 transition duration-300';
+                card.innerHTML = `
+                    <div>
+                        <div class="flex justify-between items-center text-[10px] text-slate-400 mb-2">
+                            <span class="px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 font-bold uppercase">${art.category}</span>
+                            <span>${art.date}</span>
+                        </div>
+                        <h4 class="text-sm font-bold text-white mb-1 leading-snug hover:text-cyan-300 transition cursor-pointer" onclick="openArticleModal(${art.id})">${art.title}</h4>
+                        <p class="text-xs text-slate-400 line-clamp-2 leading-relaxed mb-3">${art.desc}</p>
+                    </div>
+                    <button onclick="openArticleModal(${art.id})" class="text-xs text-cyan-400 hover:text-cyan-300 font-semibold flex items-center gap-1">
+                        Baca Selengkapnya <i class="fa-solid fa-arrow-right text-[10px]"></i>
+                    </button>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function filterNews(cat) {
+            if (cat === 'all') renderNews(newsDatabase);
+            else renderNews(newsDatabase.filter(n => n.category === cat));
+        }
+
+        function openArticleModal(id) {
+            const art = newsDatabase.find(n => n.id === id);
+            if (!art) return;
+            document.getElementById('art-cat').innerText = art.category.toUpperCase();
+            document.getElementById('art-title').innerText = art.title;
+            document.getElementById('art-content').innerHTML = `
+                <p class="font-semibold text-slate-200">${art.desc}</p>
+                <p>${art.content}</p>
+            `;
+            document.getElementById('article-modal').classList.remove('hidden');
+        }
+
+        function closeArticleModal() {
+            document.getElementById('article-modal').classList.add('hidden');
+        }
+
+        /* -------------------------------------------------------------
+           SYSTEM TOAST & ALERTS (Geo-fencing Simulation)
+        ------------------------------------------------------------- */
+        function triggerSimulatedAlert() {
+            showToast('🚨 Peringatan Geofence: Emisi tinggi terdeteksi di sektor timur!', 'danger');
+        }
+
+        function showToast(msg, type = 'info') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            
+            let colorClasses = 'bg-slate-900 border-slate-700 text-slate-200';
+            if (type === 'success') colorClasses = 'bg-emerald-950/90 border-emerald-500/50 text-emerald-200';
+            if (type === 'danger') colorClasses = 'bg-red-950/90 border-red-500/50 text-red-200';
+            if (type === 'warning') colorClasses = 'bg-amber-950/90 border-amber-500/50 text-amber-200';
+
+            toast.className = `p-3 rounded-xl border shadow-xl text-xs backdrop-blur-md transition-all duration-300 transform translate-x-full pointer-events-auto flex items-center justify-between ${colorClasses}`;
+            toast.innerHTML = `
+                <div class="flex items-center gap-2">
+                    <i class="fa-solid fa-bell text-cyan-400"></i>
+                    <span>${msg}</span>
+                </div>
+                <button onclick="this.parentElement.remove()" class="text-slate-400 hover:text-white ml-2">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            `;
+
+            container.appendChild(toast);
+            setTimeout(() => toast.classList.remove('translate-x-full'), 10);
+            setTimeout(() => {
+                toast.classList.add('opacity-0');
+                setTimeout(() => toast.remove(), 300);
+            }, 4000);
+        }
     </script>
 </body>
 </html>
