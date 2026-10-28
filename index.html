@@ -1,0 +1,917 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AeroSync | Premium Air Quality Monitoring</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        aqi: {
+                            good: '#10B981',      // 0-50
+                            moderate: '#FBBF24',  // 51-100
+                            sensitive: '#F97316', // 101-150
+                            unhealthy: '#EF4444', // 151-200
+                            severe: '#8B5CF6',    // 201-300
+                            hazardous: '#9F1239'  // 301+
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0f172a;
+            background-image: 
+                radial-gradient(at 0% 0%, hsla(253,16%,7%,1) 0, transparent 50%), 
+                radial-gradient(at 50% 0%, hsla(225,39%,30%,0.2) 0, transparent 50%), 
+                radial-gradient(at 100% 0%, hsla(339,49%,30%,0.2) 0, transparent 50%);
+            background-attachment: fixed;
+            color: #f8fafc;
+        }
+
+        /* Glassmorphism Utilities */
+        .glass-panel {
+            background: rgba(30, 41, 59, 0.4);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+        }
+        
+        .glass-input {
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: white;
+        }
+        .glass-input:focus {
+            outline: none;
+            border-color: rgba(56, 189, 248, 0.5);
+            box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.25);
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.4); }
+
+        /* Globe Animation */
+        .globe-container {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            position: relative;
+            overflow: hidden;
+            box-shadow: inset -10px -10px 20px rgba(0,0,0,0.8), 0 0 20px rgba(56, 189, 248, 0.4);
+            background: #1e3a8a;
+        }
+        .globe-map {
+            width: 200%;
+            height: 100%;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='100' viewBox='0 0 200 100'%3E%3Cpath fill='%2310b981' opacity='0.7' d='M20,20 Q40,10 60,30 T100,40 T140,20 T180,50 L180,90 L20,90 Z'/%3E%3Cpath fill='%23059669' opacity='0.5' d='M10,40 Q30,60 50,30 T90,70 T130,50 T170,80 L170,100 L10,100 Z'/%3E%3C/svg%3E");
+            background-size: cover;
+            animation: spin-globe 10s linear infinite;
+        }
+        @keyframes spin-globe {
+            100% { transform: translateX(-50%); }
+        }
+
+        /* Diorama */
+        .diorama-box {
+            position: relative;
+            overflow: hidden;
+            border-radius: 1rem;
+            height: 200px;
+            transition: background 1s ease;
+        }
+        .diorama-layer {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            background-size: contain;
+            background-repeat: repeat-x;
+            background-position: bottom;
+            transition: all 0.5s ease;
+        }
+        .diorama-smog {
+            position: absolute;
+            inset: 0;
+            transition: all 1s ease;
+            mix-blend-mode: multiply;
+        }
+        .diorama-sun {
+            position: absolute;
+            top: 20px;
+            right: 40px;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: #FDE047;
+            box-shadow: 0 0 20px #FDE047;
+            transition: all 1s ease;
+        }
+    </style>
+</head>
+<body class="antialiased min-h-screen pb-12">
+
+    <!-- Navbar -->
+    <nav class="glass-panel sticky top-0 z-50 px-6 py-4 mb-8">
+        <div class="max-w-7xl mx-auto flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-400 to-blue-600 flex items-center justify-center shadow-lg">
+                    <i class="fa-solid fa-wind text-white text-xl"></i>
+                </div>
+                <h1 class="text-2xl font-bold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-400">AeroSync</h1>
+            </div>
+            <div class="flex items-center gap-4 text-sm font-medium">
+                <span class="hidden md:inline text-gray-400" id="live-time"></span>
+                <div class="flex bg-gray-900/50 rounded-lg p-1 border border-white/5">
+                    <button id="btn-who" class="px-3 py-1 rounded-md bg-blue-500/20 text-blue-400 transition-colors">WHO Standard</button>
+                    <button id="btn-epa" class="px-3 py-1 rounded-md text-gray-400 hover:text-gray-200 transition-colors">US EPA</button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Dashboard -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 space-y-6">
+        
+        <!-- Top Section: Location, Main AQI, Diorama -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            
+            <!-- Left Col: Location & Globe (Col span 4) -->
+            <div class="glass-panel rounded-2xl p-6 lg:col-span-4 flex flex-col justify-between relative overflow-hidden group">
+                <div class="absolute top-0 right-0 p-32 bg-cyan-500/10 rounded-full blur-3xl -z-10 group-hover:bg-cyan-500/20 transition-all duration-500"></div>
+                
+                <div>
+                    <h2 class="text-lg font-semibold mb-4 text-gray-200 flex items-center gap-2">
+                        <i class="fa-solid fa-location-dot text-cyan-400"></i> Region Selector
+                    </h2>
+                    
+                    <div class="space-y-3">
+                        <select id="sel-country" class="glass-input w-full p-2.5 rounded-lg text-sm">
+                            <option value="ID">Indonesia</option>
+                        </select>
+                        <select id="sel-province" class="glass-input w-full p-2.5 rounded-lg text-sm">
+                            <option value="JI">Jawa Timur</option>
+                        </select>
+                        <select id="sel-city" class="glass-input w-full p-2.5 rounded-lg text-sm transition-all duration-300">
+                            <option value="Malang" data-aqi="125">Malang</option>
+                            <option value="Surabaya" data-aqi="155">Surabaya</option>
+                            <option value="Batu" data-aqi="45">Batu</option>
+                            <option value="Jakarta" data-aqi="210">Jakarta</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="mt-8 flex justify-center items-center gap-6">
+                    <div class="globe-container">
+                        <div class="globe-map"></div>
+                    </div>
+                    <div class="text-center">
+                        <p class="text-xs text-gray-400 mb-1">Global Station</p>
+                        <div class="text-2xl font-bold text-cyan-400">Active</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Middle Col: Current Status (Col span 4) -->
+            <div class="glass-panel rounded-2xl p-6 lg:col-span-4 flex flex-col items-center justify-center text-center relative">
+                <p class="text-sm font-medium text-gray-400 uppercase tracking-wider mb-2">Current AQI Index</p>
+                
+                <div class="relative w-48 h-48 flex items-center justify-center">
+                    <svg class="w-full h-full transform -rotate-90 absolute inset-0">
+                        <circle cx="96" cy="96" r="88" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="12"></circle>
+                        <circle id="aqi-ring" cx="96" cy="96" r="88" fill="none" stroke="#F97316" stroke-width="12" stroke-dasharray="552.92" stroke-dashoffset="100" class="transition-all duration-1000 ease-out"></circle>
+                    </svg>
+                    <div class="flex flex-col items-center z-10">
+                        <span id="aqi-value" class="text-6xl font-black tabular-nums tracking-tighter">125</span>
+                        <span id="aqi-label" class="text-sm font-semibold mt-1 px-3 py-1 rounded-full bg-orange-500/20 text-orange-400 border border-orange-500/30">Unhealthy (Sens)</span>
+                    </div>
+                </div>
+
+                <div class="mt-6 grid grid-cols-2 gap-4 w-full">
+                    <div class="bg-gray-900/50 rounded-xl p-3 border border-white/5">
+                        <p class="text-xs text-gray-500 mb-1">Primary Pollutant</p>
+                        <p class="font-semibold text-gray-200">PM2.5</p>
+                    </div>
+                    <div class="bg-gray-900/50 rounded-xl p-3 border border-white/5">
+                        <p class="text-xs text-gray-500 mb-1">Concentration</p>
+                        <p class="font-semibold text-gray-200" id="pm25-val">45.5 µg/m³</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Col: Diorama & Equivalency (Col span 4) -->
+            <div class="glass-panel rounded-2xl p-6 lg:col-span-4 flex flex-col gap-4">
+                
+                <div class="flex justify-between items-center mb-1">
+                    <h2 class="text-sm font-semibold text-gray-300">Environment View</h2>
+                    <div class="flex bg-gray-900/50 rounded-lg p-1 border border-white/5 text-xs">
+                        <button class="diorama-btn active px-2 py-1 rounded text-white bg-white/10" data-type="urban">Urban</button>
+                        <button class="diorama-btn px-2 py-1 rounded text-gray-400 hover:text-white" data-type="rural">Rural</button>
+                        <button class="diorama-btn px-2 py-1 rounded text-gray-400 hover:text-white" data-type="mountain">Mountain</button>
+                    </div>
+                </div>
+                
+                <!-- Diorama Box -->
+                <div id="diorama" class="diorama-box flex-1 shadow-inner border border-white/10" style="background: linear-gradient(to bottom, #4facfe, #00f2fe);">
+                    <div id="diorama-sun" class="diorama-sun"></div>
+                    <div id="diorama-layer" class="diorama-layer h-1/2 opacity-70" style="background-image: url('data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22 preserveAspectRatio=%22none%22%3E%3Cpath d=%22M0,100 L0,50 L10,50 L10,30 L20,30 L20,60 L30,60 L30,40 L40,40 L40,70 L50,70 L50,20 L60,20 L60,60 L70,60 L70,40 L80,40 L80,80 L90,80 L90,50 L100,50 L100,100 Z%22 fill=%22%231e293b%22/%3E%3C/svg%3E');"></div>
+                    <div id="diorama-smog" class="diorama-smog bg-gray-500/0"></div>
+                </div>
+
+                <!-- Cigarette Equivalence -->
+                <div class="bg-gradient-to-r from-red-900/40 to-gray-900/40 rounded-xl p-3 border border-red-500/20 flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <i class="fa-solid fa-smoking text-red-400 text-xl"></i>
+                        <div>
+                            <p class="text-xs text-gray-400">Passive Smoking Eq.</p>
+                            <p class="text-sm font-semibold"><span id="cig-count" class="text-red-400">2</span> Cigarettes / day</p>
+                        </div>
+                    </div>
+                    <i class="fa-solid fa-circle-info text-gray-500 cursor-pointer hover:text-gray-300" title="Based on Berkeley Earth study: 1 cig ≈ 22 µg/m3 PM2.5"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- Middle Section: Forecast, Geo-fence, AI Recommendations -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            
+            <!-- 7 Day Forecast -->
+            <div class="glass-panel rounded-2xl p-6 flex flex-col">
+                <h2 class="text-lg font-semibold mb-4 text-gray-200"><i class="fa-solid fa-chart-line text-blue-400 mr-2"></i> 7-Day Forecast</h2>
+                <div class="flex-1 relative w-full h-48">
+                    <canvas id="forecastChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Geo-fencing & Map Alerts -->
+            <div class="glass-panel rounded-2xl p-6">
+                <h2 class="text-lg font-semibold mb-4 text-gray-200"><i class="fa-solid fa-map-location-dot text-red-400 mr-2"></i> Geo-fence Alerts</h2>
+                
+                <div class="space-y-3" id="geo-alerts">
+                    <!-- Dynamic Alerts -->
+                </div>
+            </div>
+
+            <!-- AI Health Analysis -->
+            <div class="glass-panel rounded-2xl p-6 bg-gradient-to-b from-blue-900/20 to-transparent">
+                <h2 class="text-lg font-semibold mb-4 text-gray-200 flex items-center gap-2">
+                    <i class="fa-solid fa-brain text-purple-400"></i> AI Health Analysis
+                </h2>
+                
+                <div class="space-y-4">
+                    <div class="bg-gray-900/40 p-3 rounded-xl border border-white/5">
+                        <h3 class="text-xs font-semibold text-gray-400 mb-1 uppercase tracking-wider">Condition Summary</h3>
+                        <p id="ai-summary" class="text-sm text-gray-200 leading-relaxed">Air quality is acceptable; however, for some pollutants there may be a moderate health concern for a very small number of people who are unusually sensitive to air pollution.</p>
+                    </div>
+                    <div class="bg-gray-900/40 p-3 rounded-xl border border-white/5">
+                        <h3 class="text-xs font-semibold text-gray-400 mb-1 uppercase tracking-wider">Activity Recommendation</h3>
+                        <p id="ai-activity" class="text-sm text-gray-200 leading-relaxed flex items-start gap-2">
+                            <i class="fa-solid fa-person-running text-green-400 mt-1"></i>
+                            <span>Active children and adults, and people with respiratory disease, such as asthma, should limit prolonged outdoor exertion.</span>
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Lower Section: Advanced Calc & Custom Stats -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            
+            <!-- AQI Calculator -->
+            <div class="glass-panel rounded-2xl p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-lg font-semibold text-gray-200"><i class="fa-solid fa-calculator text-emerald-400 mr-2"></i> AQI Calculator</h2>
+                    <button id="info-btn" class="text-gray-400 hover:text-white"><i class="fa-solid fa-circle-question"></i></button>
+                </div>
+                
+                <div class="grid grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">PM2.5 (µg/m³)</label>
+                        <input type="number" id="calc-pm25" class="glass-input w-full p-2.5 rounded-lg text-sm" placeholder="e.g. 15.5">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">PM10 (µg/m³)</label>
+                        <input type="number" id="calc-pm10" class="glass-input w-full p-2.5 rounded-lg text-sm" placeholder="e.g. 50">
+                    </div>
+                </div>
+                <button id="btn-calc" class="w-full py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-medium transition-colors shadow-lg shadow-emerald-500/20 mb-4">Calculate Exact AQI</button>
+                
+                <div id="calc-result" class="hidden bg-gray-900/60 p-4 rounded-xl border border-emerald-500/30 text-center mb-4">
+                    <p class="text-sm text-gray-300">Calculated AQI</p>
+                    <p class="text-3xl font-bold text-emerald-400" id="calc-aqi-val">--</p>
+                </div>
+
+                <div class="h-32 overflow-y-auto">
+                    <h3 class="text-xs text-gray-500 mb-2 uppercase sticky top-0 bg-[#0f172a]/90 py-1">Calculation History</h3>
+                    <ul id="calc-history" class="space-y-2 text-sm text-gray-300">
+                        <!-- History items -->
+                        <li class="text-gray-500 text-center text-xs py-2 italic">No history yet.</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Custom Stats Builder -->
+            <div class="glass-panel rounded-2xl p-6 flex flex-col">
+                <h2 class="text-lg font-semibold mb-4 text-gray-200"><i class="fa-solid fa-chart-bar text-pink-400 mr-2"></i> Custom Stats Builder</h2>
+                
+                <div class="flex gap-2 mb-4">
+                    <input type="text" id="cs-label" class="glass-input flex-1 p-2 rounded-lg text-sm" placeholder="Time/Label (e.g. 10:00 AM)">
+                    <input type="number" id="cs-val" class="glass-input w-24 p-2 rounded-lg text-sm" placeholder="AQI Val">
+                    <button id="btn-add-cs" class="bg-pink-600 hover:bg-pink-500 text-white px-4 rounded-lg text-sm font-medium transition-colors shadow-lg shadow-pink-500/20"><i class="fa-solid fa-plus"></i></button>
+                </div>
+
+                <div class="flex-1 w-full h-40 relative mb-4">
+                    <canvas id="customChart"></canvas>
+                </div>
+                
+                <div class="bg-pink-900/20 p-3 rounded-xl border border-pink-500/20 mb-4">
+                    <h3 class="text-xs font-semibold text-pink-300 mb-1">Custom Trend Analysis</h3>
+                    <p id="cs-analysis" class="text-sm text-gray-300">Add data points to see trend analysis.</p>
+                </div>
+
+                <div class="h-24 overflow-y-auto">
+                     <ul id="cs-list" class="space-y-1 text-sm text-gray-300">
+                        <!-- Custom items -->
+                     </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bottom News Section -->
+        <div>
+            <h2 class="text-xl font-bold mb-4 text-gray-200 border-b border-white/10 pb-2"><i class="fa-solid fa-newspaper text-gray-400 mr-2"></i> Environmental News</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <!-- News Card 1 -->
+                <div class="glass-panel rounded-xl overflow-hidden hover:-translate-y-1 transition-transform cursor-pointer group">
+                    <div class="h-32 bg-gray-800 relative overflow-hidden">
+                        <img src="https://placehold.co/400x200/1e293b/94a3b8?text=Pollution+Peak" class="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" alt="news">
+                    </div>
+                    <div class="p-4">
+                        <p class="text-xs text-cyan-400 mb-1">Global</p>
+                        <h3 class="text-sm font-semibold text-gray-200 line-clamp-2">New WHO Guidelines Demand Stricter PM2.5 Controls</h3>
+                    </div>
+                </div>
+                <!-- News Card 2 -->
+                <div class="glass-panel rounded-xl overflow-hidden hover:-translate-y-1 transition-transform cursor-pointer group">
+                    <div class="h-32 bg-gray-800 relative overflow-hidden">
+                        <img src="https://placehold.co/400x200/1e293b/94a3b8?text=City+Smog" class="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" alt="news">
+                    </div>
+                    <div class="p-4">
+                        <p class="text-xs text-cyan-400 mb-1">Local</p>
+                        <h3 class="text-sm font-semibold text-gray-200 line-clamp-2">Urban Centers Experience Unprecedented Smog Levels This Week</h3>
+                    </div>
+                </div>
+                <!-- News Card 3 -->
+                <div class="glass-panel rounded-xl overflow-hidden hover:-translate-y-1 transition-transform cursor-pointer group">
+                    <div class="h-32 bg-gray-800 relative overflow-hidden">
+                        <img src="https://placehold.co/400x200/1e293b/94a3b8?text=Green+Tech" class="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" alt="news">
+                    </div>
+                    <div class="p-4">
+                        <p class="text-xs text-cyan-400 mb-1">Technology</p>
+                        <h3 class="text-sm font-semibold text-gray-200 line-clamp-2">Startups Develop Advanced Air Filtration Utilizing AI Monitoring</h3>
+                    </div>
+                </div>
+                <!-- News Card 4 -->
+                <div class="glass-panel rounded-xl overflow-hidden hover:-translate-y-1 transition-transform cursor-pointer group">
+                    <div class="h-32 bg-gray-800 relative overflow-hidden">
+                        <img src="https://placehold.co/400x200/1e293b/94a3b8?text=Health+Impact" class="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" alt="news">
+                    </div>
+                    <div class="p-4">
+                        <p class="text-xs text-cyan-400 mb-1">Health</p>
+                        <h3 class="text-sm font-semibold text-gray-200 line-clamp-2">Long-term Exposure to PM10 Linked to Respiratory Issues</h3>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Info Modal -->
+    <div id="modal-info" class="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm hidden flex items-center justify-center p-4">
+        <div class="bg-slate-800 border border-slate-600 rounded-2xl max-w-md w-full p-6 shadow-2xl">
+            <h3 class="text-xl font-bold mb-4 text-white">AQI Calculation Logic</h3>
+            <p class="text-sm text-gray-300 mb-4">
+                The Air Quality Index is a piecewise linear function of the pollutant concentration. 
+                Formula: <br><br>
+                <code class="bg-black/50 p-2 rounded block font-mono text-xs text-emerald-400">
+                Ip = [(Ihi-Ilo)/(BPhi-BPlo)] * (Cp-BPlo) + Ilo
+                </code>
+                <br>
+                Where <i>Cp</i> is the rounded concentration of pollutant <i>p</i>, <i>BPhi/BPlo</i> are the breakpoints, and <i>Ihi/Ilo</i> are the corresponding AQI values.
+            </p>
+            <button id="close-modal" class="w-full py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-white font-medium transition-colors">Close</button>
+        </div>
+    </div>
+
+    <!-- Notification Container -->
+    <div id="notification-area" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2"></div>
+
+    <script>
+        // --- State Management ---
+        const state = {
+            aqi: 125,
+            city: 'Malang',
+            standard: 'WHO', // 'WHO' or 'EPA'
+            landscape: 'urban',
+            customStats: [
+                { label: 'Mon', value: 45 },
+                { label: 'Tue', value: 85 },
+                { label: 'Wed', value: 110 }
+            ],
+            calcHistory: []
+        };
+
+        // --- Configuration & Constants ---
+        const thresholds = {
+            WHO: { pm25_limit: 15, max_good: 50 },
+            EPA: { pm25_limit: 35, max_good: 50 }
+        };
+
+        const aqiCategories = [
+            { max: 50, label: 'Good', color: '#10B981', bg: 'bg-emerald-500/20', text: 'text-emerald-400', border: 'border-emerald-500/30' },
+            { max: 100, label: 'Moderate', color: '#FBBF24', bg: 'bg-yellow-500/20', text: 'text-yellow-400', border: 'border-yellow-500/30' },
+            { max: 150, label: 'Unhealthy (Sens)', color: '#F97316', bg: 'bg-orange-500/20', text: 'text-orange-400', border: 'border-orange-500/30' },
+            { max: 200, label: 'Unhealthy', color: '#EF4444', bg: 'bg-red-500/20', text: 'text-red-400', border: 'border-red-500/30' },
+            { max: 300, label: 'Very Unhealthy', color: '#8B5CF6', bg: 'bg-purple-500/20', text: 'text-purple-400', border: 'border-purple-500/30' },
+            { max: 999, label: 'Hazardous', color: '#9F1239', bg: 'bg-rose-900/40', text: 'text-rose-400', border: 'border-rose-500/30' }
+        ];
+
+        // --- Chart Instances ---
+        let forecastChartInstance = null;
+        let customChartInstance = null;
+
+        // --- Utility Functions ---
+        const getCategory = (aqi) => aqiCategories.find(c => aqi <= c.max) || aqiCategories[aqiCategories.length - 1];
+        
+        const showNotification = (msg, type='info') => {
+            const container = document.getElementById('notification-area');
+            const el = document.createElement('div');
+            const colors = type === 'error' ? 'bg-red-900/90 border-red-500' : 'bg-slate-800/90 border-slate-600';
+            el.className = `p-3 rounded-lg border shadow-lg text-sm text-white transform transition-all duration-300 translate-y-10 opacity-0 ${colors}`;
+            el.innerText = msg;
+            container.appendChild(el);
+            
+            setTimeout(() => {
+                el.classList.remove('translate-y-10', 'opacity-0');
+            }, 10);
+
+            setTimeout(() => {
+                el.classList.add('translate-y-10', 'opacity-0');
+                setTimeout(() => el.remove(), 300);
+            }, 3000);
+        };
+
+        // --- Core Update Logic ---
+        function updateDashboard() {
+            const cat = getCategory(state.aqi);
+            
+            // 1. Update Ring & Numbers
+            const aqiValEl = document.getElementById('aqi-value');
+            const aqiLabelEl = document.getElementById('aqi-label');
+            const ringEl = document.getElementById('aqi-ring');
+            
+            // Animate number
+            animateValue(aqiValEl, parseInt(aqiValEl.innerText) || 0, state.aqi, 1000);
+            
+            aqiLabelEl.innerText = cat.label;
+            aqiLabelEl.className = `text-sm font-semibold mt-1 px-3 py-1 rounded-full ${cat.bg} ${cat.text} border ${cat.border}`;
+            
+            ringEl.style.stroke = cat.color;
+            const circumference = 552.92;
+            const offset = circumference - (Math.min(state.aqi, 300) / 300) * circumference;
+            ringEl.style.strokeDashoffset = offset;
+
+            // 2. Pollutants & Equivalence (Mock logic: PM2.5 ~ AQI * 0.4)
+            const pm25 = (state.aqi * 0.4).toFixed(1);
+            document.getElementById('pm25-val').innerText = `${pm25} µg/m³`;
+            
+            // 1 cig ≈ 22 µg/m³
+            const cigs = Math.max(0, (pm25 / 22)).toFixed(1);
+            document.getElementById('cig-count').innerText = cigs;
+
+            // 3. Update Diorama
+            updateDiorama(cat);
+
+            // 4. Update Smart Text
+            updateAIAnalysis(cat, pm25);
+
+            // 5. Update Charts & Alerts
+            updateForecastChart();
+            updateGeoAlerts(cat);
+            updateCustomChart();
+        }
+
+        function animateValue(obj, start, end, duration) {
+            let startTimestamp = null;
+            const step = (timestamp) => {
+                if (!startTimestamp) startTimestamp = timestamp;
+                const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+                obj.innerHTML = Math.floor(progress * (end - start) + start);
+                if (progress < 1) {
+                    window.requestAnimationFrame(step);
+                }
+            };
+            window.requestAnimationFrame(step);
+        }
+
+        function updateDiorama(cat) {
+            const box = document.getElementById('diorama');
+            const smog = document.getElementById('diorama-smog');
+            const layer = document.getElementById('diorama-layer');
+            const sun = document.getElementById('diorama-sun');
+
+            // Set Sky Color based on AQI
+            if (state.aqi <= 50) {
+                box.style.background = 'linear-gradient(to bottom, #38bdf8, #bae6fd)';
+                sun.style.background = '#FDE047';
+                sun.style.boxShadow = '0 0 20px #FDE047';
+            } else if (state.aqi <= 100) {
+                box.style.background = 'linear-gradient(to bottom, #94a3b8, #e2e8f0)';
+                sun.style.background = '#fef08a';
+                sun.style.boxShadow = '0 0 10px #fef08a';
+            } else if (state.aqi <= 150) {
+                box.style.background = 'linear-gradient(to bottom, #9ca3af, #fef08a)';
+                sun.style.background = '#f97316';
+                sun.style.boxShadow = '0 0 20px #f97316';
+            } else if (state.aqi <= 200) {
+                box.style.background = 'linear-gradient(to bottom, #64748b, #fca5a5)';
+                sun.style.background = '#ef4444';
+                sun.style.boxShadow = '0 0 30px #ef4444';
+            } else {
+                box.style.background = 'linear-gradient(to bottom, #334155, #9f1239)';
+                sun.style.background = '#be123c';
+                sun.style.boxShadow = '0 0 40px #be123c';
+            }
+
+            // Set Smog Opacity/Color
+            let smogColor = 'rgba(255,255,255,0)';
+            if (state.aqi > 50) smogColor = `rgba(150, 150, 140, ${(state.aqi-50)/300})`;
+            if (state.aqi > 150) smogColor = `rgba(139, 69, 19, ${(state.aqi)/400})`;
+            smog.style.backgroundColor = smogColor;
+
+            // Set Landscape SVG
+            const svgs = {
+                urban: `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath d='M0,100 L0,50 L10,50 L10,30 L20,30 L20,60 L30,60 L30,40 L40,40 L40,70 L50,70 L50,20 L60,20 L60,60 L70,60 L70,40 L80,40 L80,80 L90,80 L90,50 L100,50 L100,100 Z' fill='%231e293b'/%3E%3C/svg%3E`,
+                rural: `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath d='M0,100 L0,80 Q25,60 50,80 T100,70 L100,100 Z' fill='%231e293b'/%3E%3Ccircle cx='30' cy='60' r='15' fill='%231e293b'/%3E%3Ccircle cx='70' cy='65' r='10' fill='%231e293b'/%3E%3C/svg%3E`,
+                mountain: `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath d='M0,100 L30,30 L50,60 L75,20 L100,80 L100,100 Z' fill='%231e293b'/%3E%3C/svg%3E`
+            };
+            layer.style.backgroundImage = `url("${svgs[state.landscape]}")`;
+        }
+
+        function updateAIAnalysis(cat, pm25) {
+            const summaryEl = document.getElementById('ai-summary');
+            const activityEl = document.getElementById('ai-activity');
+
+            const summaries = [
+                "Air quality is optimal. Perfect day for outdoor activities and natural ventilation.",
+                "Air quality is acceptable; however, sensitive groups may experience minor symptoms.",
+                "Members of sensitive groups may experience health effects. General public is not likely to be affected.",
+                "Everyone may begin to experience health effects; sensitive groups may experience more serious effects.",
+                "Health alert: everyone may experience more serious health effects. Air is highly polluted.",
+                "Health warnings of emergency conditions. The entire population is more likely to be affected."
+            ];
+
+            const activities = [
+                "Open windows to bring in fresh, clean air. Great day for intense outdoor sports.",
+                "Outdoor activities are fine for most people. Sensitive individuals should monitor symptoms.",
+                "Reduce prolonged or heavy outdoor exertion. Consider moving intense workouts indoors.",
+                "Wear an N95 mask if going outside. Avoid heavy outdoor activities to protect lung health.",
+                "Stay indoors and keep windows closed. Run an air purifier with a HEPA filter if available.",
+                "Strictly stay indoors. Avoid any physical exertion outside. This level is extremely hazardous to lung tissue."
+            ];
+
+            let index = aqiCategories.indexOf(cat);
+            if(index === -1) index = 0;
+
+            summaryEl.innerText = summaries[index];
+            
+            let icon = '<i class="fa-solid fa-person-running text-green-400 mt-1"></i>';
+            if (state.aqi > 100) icon = '<i class="fa-solid fa-mask text-orange-400 mt-1"></i>';
+            if (state.aqi > 200) icon = '<i class="fa-solid fa-house-chimney text-red-400 mt-1"></i>';
+            
+            activityEl.innerHTML = `${icon} <span>${activities[index]}</span>`;
+        }
+
+        function updateGeoAlerts(cat) {
+            const container = document.getElementById('geo-alerts');
+            container.innerHTML = ''; // clear
+
+            if (state.aqi <= 50) {
+                container.innerHTML = `<div class="p-3 rounded-lg bg-emerald-900/30 border border-emerald-500/20 text-sm text-emerald-300 flex items-center gap-2"><i class="fa-solid fa-check-circle"></i> No active alerts in ${state.city}.</div>`;
+                return;
+            }
+
+            const alerts = [
+                { area: `${state.city} City Center`, issue: 'High Traffic Emissions', sev: state.aqi > 150 ? 'high' : 'medium' },
+                { area: `Industrial Zone East`, issue: 'Factory Exhaust Spike', sev: state.aqi > 200 ? 'high' : (state.aqi > 100 ? 'medium' : 'low') }
+            ];
+
+            alerts.forEach(a => {
+                if(a.sev === 'low' && state.aqi > 100) return; // skip low if bad
+                let colorClass = a.sev === 'high' ? 'bg-red-900/40 border-red-500/30 text-red-300' : 'bg-orange-900/40 border-orange-500/30 text-orange-300';
+                let iconClass = a.sev === 'high' ? 'text-red-400' : 'text-orange-400';
+                
+                container.innerHTML += `
+                    <div class="p-3 rounded-lg border ${colorClass} text-sm flex flex-col gap-1">
+                        <div class="flex items-center justify-between">
+                            <span class="font-semibold"><i class="fa-solid fa-triangle-exclamation ${iconClass} mr-1"></i> ${a.area}</span>
+                            <span class="text-xs px-2 py-0.5 rounded bg-black/30 capitalize">${a.sev} Priority</span>
+                        </div>
+                        <span class="opacity-80 ml-5 text-xs">Cause: ${a.issue}</span>
+                    </div>
+                `;
+            });
+        }
+
+        // --- Chart.js Implementations ---
+        function updateForecastChart() {
+            const ctx = document.getElementById('forecastChart').getContext('2d');
+            
+            // Generate pseudo-random data around current AQI
+            const labels = ['Day 1', 'Day 2', 'Day 3', 'Day 4', 'Day 5', 'Day 6', 'Day 7'];
+            const data = labels.map(() => Math.max(0, Math.floor(state.aqi + (Math.random() * 60 - 30))));
+
+            if (forecastChartInstance) {
+                forecastChartInstance.data.datasets[0].data = data;
+                forecastChartInstance.update();
+            } else {
+                Chart.defaults.color = '#94a3b8';
+                Chart.defaults.font.family = 'Inter';
+                
+                forecastChartInstance = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Predicted AQI',
+                            data: data,
+                            borderColor: '#38bdf8',
+                            backgroundColor: 'rgba(56, 189, 248, 0.1)',
+                            borderWidth: 2,
+                            fill: true,
+                            tension: 0.4,
+                            pointRadius: 3,
+                            pointBackgroundColor: '#38bdf8'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { display: false } },
+                        scales: {
+                            y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.05)' } },
+                            x: { grid: { display: false } }
+                        }
+                    }
+                });
+            }
+        }
+
+        function updateCustomChart() {
+            const ctx = document.getElementById('customChart').getContext('2d');
+            const limit = thresholds[state.standard].max_good; // Standard good limit
+
+            const labels = state.customStats.map(d => d.label);
+            const data = state.customStats.map(d => d.value);
+            const pointColors = data.map(v => v > limit ? '#ef4444' : '#10b981'); // Red if over limit
+
+            if (customChartInstance) {
+                customChartInstance.data.labels = labels;
+                customChartInstance.data.datasets[0].data = data;
+                customChartInstance.data.datasets[0].pointBackgroundColor = pointColors;
+                customChartInstance.options.plugins.annotation = getCustomChartLimitLine(limit);
+                customChartInstance.update();
+            } else {
+                customChartInstance = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Custom AQI',
+                            data: data,
+                            backgroundColor: pointColors.map(c => c === '#ef4444' ? 'rgba(239, 68, 68, 0.7)' : 'rgba(16, 185, 129, 0.7)'),
+                            borderColor: pointColors,
+                            borderWidth: 1,
+                            borderRadius: 4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { display: false } },
+                        scales: {
+                            y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.05)' } },
+                            x: { grid: { display: false } }
+                        }
+                    }
+                });
+            }
+
+            renderCustomList();
+            analyzeCustomTrend(data, limit);
+        }
+
+        function getCustomChartLimitLine(limit) {
+            // Note: Chart.js annotation plugin not included via CDN by default in this minimal setup, 
+            // so we rely on coloring the bars. This function is a placeholder for standard limit logic.
+            return {};
+        }
+
+        function renderCustomList() {
+            const list = document.getElementById('cs-list');
+            list.innerHTML = '';
+            
+            if(state.customStats.length === 0) {
+                list.innerHTML = '<li class="text-gray-500 text-center text-xs py-2 italic">No data points added.</li>';
+                return;
+            }
+
+            state.customStats.forEach((item, idx) => {
+                const li = document.createElement('li');
+                li.className = "flex justify-between items-center bg-gray-900/40 px-3 py-1.5 rounded-lg border border-white/5";
+                li.innerHTML = `
+                    <span>${item.label} <span class="text-xs text-gray-500 ml-2">Value: ${item.value}</span></span>
+                    <button class="text-red-400 hover:text-red-300 transition-colors delete-cs" data-idx="${idx}"><i class="fa-solid fa-trash-can text-xs"></i></button>
+                `;
+                list.appendChild(li);
+            });
+
+            document.querySelectorAll('.delete-cs').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const idx = parseInt(e.currentTarget.getAttribute('data-idx'));
+                    state.customStats.splice(idx, 1);
+                    updateCustomChart();
+                    showNotification('Data point removed.');
+                });
+            });
+        }
+
+        function analyzeCustomTrend(data, limit) {
+            const el = document.getElementById('cs-analysis');
+            if (data.length < 2) {
+                el.innerText = "Add more data points to see trend analysis.";
+                return;
+            }
+
+            const first = data[0];
+            const last = data[data.length - 1];
+            const avg = data.reduce((a, b) => a + b, 0) / data.length;
+            const overLimitCount = data.filter(v => v > limit).length;
+
+            let trend = "stable";
+            if (last > first * 1.1) trend = "worsening";
+            if (last < first * 0.9) trend = "improving";
+
+            let text = `Trend is generally <span class="font-semibold text-white">${trend}</span>. Average value is ${avg.toFixed(1)}. `;
+            
+            if (overLimitCount > 0) {
+                text += `<br><span class="text-red-300 text-xs">${overLimitCount} out of ${data.length} recorded points exceed the ${state.standard} safe limit (${limit}).</span>`;
+            } else {
+                text += `<br><span class="text-emerald-300 text-xs">All recorded points are within safe limits.</span>`;
+            }
+
+            el.innerHTML = text;
+        }
+
+
+        // --- Event Listeners & Initialization ---
+        document.addEventListener('DOMContentLoaded', () => {
+            
+            // Initial render
+            updateDashboard();
+
+            // Time clock
+            setInterval(() => {
+                const now = new Date();
+                document.getElementById('live-time').innerText = now.toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute:'2-digit' });
+            }, 1000);
+
+            // Location Change
+            document.getElementById('sel-city').addEventListener('change', (e) => {
+                const selectedOpt = e.target.options[e.target.selectedIndex];
+                state.city = selectedOpt.value;
+                state.aqi = parseInt(selectedOpt.getAttribute('data-aqi'));
+                updateDashboard();
+                showNotification(`Location changed to ${state.city}.`);
+            });
+
+            // Standard Toggle
+            const btnWho = document.getElementById('btn-who');
+            const btnEpa = document.getElementById('btn-epa');
+            
+            const setActiveTab = (activeBtn, inactiveBtn, std) => {
+                state.standard = std;
+                activeBtn.className = 'px-3 py-1 rounded-md bg-blue-500/20 text-blue-400 transition-colors';
+                inactiveBtn.className = 'px-3 py-1 rounded-md text-gray-400 hover:text-gray-200 transition-colors';
+                updateCustomChart(); // Re-evaluate limits
+                showNotification(`Measurement standard switched to ${std}.`);
+            };
+
+            btnWho.addEventListener('click', () => setActiveTab(btnWho, btnEpa, 'WHO'));
+            btnEpa.addEventListener('click', () => setActiveTab(btnEpa, btnWho, 'EPA'));
+
+            // Diorama Toggle
+            document.querySelectorAll('.diorama-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    document.querySelectorAll('.diorama-btn').forEach(b => {
+                        b.className = 'diorama-btn px-2 py-1 rounded text-gray-400 hover:text-white';
+                    });
+                    const target = e.currentTarget;
+                    target.className = 'diorama-btn active px-2 py-1 rounded text-white bg-white/10';
+                    state.landscape = target.getAttribute('data-type');
+                    updateDiorama(getCategory(state.aqi));
+                });
+            });
+
+            // Calculator
+            document.getElementById('btn-calc').addEventListener('click', () => {
+                const pm25 = parseFloat(document.getElementById('calc-pm25').value);
+                const pm10 = parseFloat(document.getElementById('calc-pm10').value);
+                
+                if(isNaN(pm25) && isNaN(pm10)) {
+                    showNotification('Please enter at least one pollutant value.', 'error');
+                    return;
+                }
+
+                // Simplified mock calculation for demonstration (Normally complex piecewise function)
+                let calculatedAqi = 0;
+                if(!isNaN(pm25)) calculatedAqi = Math.max(calculatedAqi, pm25 * 3.5); // Mock multiplier
+                if(!isNaN(pm10)) calculatedAqi = Math.max(calculatedAqi, pm10 * 1.5);
+                
+                calculatedAqi = Math.round(calculatedAqi);
+
+                const resDiv = document.getElementById('calc-result');
+                const valEl = document.getElementById('calc-aqi-val');
+                resDiv.classList.remove('hidden');
+                
+                // Animate calculation result
+                animateValue(valEl, 0, calculatedAqi, 800);
+
+                // Add to history
+                const now = new Date();
+                const timeStr = `${now.getHours()}:${now.getMinutes().toString().padStart(2, '0')}`;
+                state.calcHistory.unshift(`[${timeStr}] PM2.5: ${pm25||'-'}, PM10: ${pm10||'-'} ➔ AQI: <b>${calculatedAqi}</b>`);
+                if(state.calcHistory.length > 5) state.calcHistory.pop();
+
+                const historyList = document.getElementById('calc-history');
+                historyList.innerHTML = state.calcHistory.map(h => `<li class="border-b border-white/5 pb-1">${h}</li>`).join('');
+            });
+
+            // Custom Stats Add
+            document.getElementById('btn-add-cs').addEventListener('click', () => {
+                const label = document.getElementById('cs-label').value.trim();
+                const val = parseFloat(document.getElementById('cs-val').value);
+
+                if(!label || isNaN(val)) {
+                    showNotification('Please provide a valid label and value.', 'error');
+                    return;
+                }
+
+                state.customStats.push({ label, value: val });
+                document.getElementById('cs-label').value = '';
+                document.getElementById('cs-val').value = '';
+                
+                updateCustomChart();
+                showNotification('Data point added successfully.');
+            });
+
+            // Info Modal
+            const modal = document.getElementById('modal-info');
+            document.getElementById('info-btn').addEventListener('click', () => {
+                modal.classList.remove('hidden');
+            });
+            document.getElementById('close-modal').addEventListener('click', () => {
+                modal.classList.add('hidden');
+            });
+            modal.addEventListener('click', (e) => {
+                if(e.target === modal) modal.classList.add('hidden');
+            });
+        });
+    </script>
+</body>
+</html>
